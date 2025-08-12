@@ -1,11 +1,11 @@
-<h1 align="center"> Benav Labs FastAPI boilerplate</h1>
+<h1 align="center">🏛️ CourtSight</h1>
 <p align="center" markdown=1>
-  <i>Yet another template to speed your FastAPI development up.</i>
+  <i>Platform Kecerdasan Hukum Berbasis AI untuk Putusan Mahkamah Agung</i>
 </p>
 
 <p align="center">
   <a href="https://benavlabs.github.io/FastAPI-boilerplate">
-    <img src="docs/assets/FastAPI-boilerplate.png" alt="Purple Rocket with FastAPI Logo as its window." width="35%" height="auto">
+    <img src="docs/assets/FastAPI-boilerplate.png" alt="CourtSight AI Legal Intelligence Platform" width="35%" height="auto">
   </a>
 </p>
 
@@ -22,570 +22,476 @@
   <a href="https://www.postgresql.org">
       <img src="https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL">
   </a>
+  <a href="https://github.com/pgvector/pgvector">
+      <img src="https://img.shields.io/badge/pgvector-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" alt="pgvector">
+  </a>
   <a href="https://redis.io">
       <img src="https://img.shields.io/badge/Redis-DC382D?logo=redis&logoColor=fff&style=for-the-badge" alt="Redis">
   </a>
   <a href="https://docs.docker.com/compose/">
       <img src="https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=fff&style=for-the-badge" alt="Docker">
   </a>
-  <a href="https://nginx.org/en/">
-      <img src="https://img.shields.io/badge/NGINX-009639?logo=nginx&logoColor=fff&style=for-the-badge" alt=NGINX>
+  <a href="https://supabase.com">
+      <img src="https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase">
   </a>
 </p>
 
 ---
 
-## 📖 Documentation
+## 🎯 Tentang CourtSight
 
-📚 **[Visit our comprehensive documentation at benavlabs.github.io/FastAPI-boilerplate](https://benavlabs.github.io/FastAPI-boilerplate/)**
+**CourtSight** adalah platform kecerdasan hukum berbasis AI yang revolusioner, dirancang untuk mendemokratisasi akses terhadap informasi hukum di Asia Tenggara. Platform ini mengubah dokumen putusan Mahkamah Agung yang kompleks menjadi wawasan yang mudah dicari dan dipahami, menjadikan keadilan lebih transparan dan inklusif.
 
-> **⚠️ Documentation Status**
-> 
-> This is our first version of the documentation. While functional, we acknowledge it's rough around the edges - there's a huge amount to document and we needed to start somewhere! We built this foundation (with a lot of AI assistance) so we can improve upon it. 
-> 
-> Better documentation, examples, and guides are actively being developed. Contributions and feedback are greatly appreciated!
+### 🌟 Visi & Misi
 
-This README provides a quick reference for LLMs and developers, but the full documentation contains detailed guides, examples, and best practices.
+**Visi:** Mendemokratisasi akses informasi hukum dengan teknologi AI untuk mewujudkan keadilan yang lebih transparan dan inklusif.
+
+**Misi:** Mengembangkan platform AI yang memungkinkan pencarian semantik, analisis cerdas, dan asisten suara untuk putusan Mahkamah Agung, membantu profesional hukum, peneliti, dan masyarakat umum dalam memahami kompleksitas hukum.
+
+### 🚀 Fitur Utama
+
+1. **🔍 Mesin Pencari Berbasis AI**
+   - Pencarian semantik putusan Mahkamah Agung menggunakan bahasa alami
+   - Vector database dengan pgvector untuk similarity search
+   - Analisis dan ringkasan otomatis menggunakan LLM
+   - Validasi sitasi dan referensi hukum
+
+2. **🤖 Chatbot AI untuk Hukum**
+   - Interaksi percakapan untuk Q&A hukum
+   - Analisis kontekstual berbasis RAG (Retrieval-Augmented Generation)
+   - Integrasi dengan database putusan pengadilan
+
+3. **🎙️ Asisten Suara AI** *(Coming Soon)*
+   - Transkripsi real-time untuk notulensi pengacara
+   - Analisis percakapan dan ekstraksi poin-poin kunci
+   - Integrasi dengan basis data hukum
+
+4. **📄 Document Processing Pipeline**
+   - Bulk ingestion dari putusan3.mahkamahagung.go.id
+   - Automated daily processing dengan task scheduler
+   - Content extraction dan vectorization
+   - Deduplication dan quality control
 
 ---
 
-## 0. About
+## 🏗️ Arsitektur Sistem
 
-**FastAPI boilerplate** creates an extendable async API using FastAPI, Pydantic V2, SQLAlchemy 2.0 and PostgreSQL:
+### Tech Stack
 
-- [`FastAPI`](https://fastapi.tiangolo.com): modern Python web framework for building APIs
-- [`Pydantic V2`](https://docs.pydantic.dev/2.4/): the most widely used data Python validation library, rewritten in Rust [`(5x-50x faster)`](https://docs.pydantic.dev/latest/blog/pydantic-v2-alpha/)
-- [`SQLAlchemy 2.0`](https://docs.sqlalchemy.org/en/20/changelog/whatsnew_20.html): Python SQL toolkit and Object Relational Mapper
-- [`PostgreSQL`](https://www.postgresql.org): The World's Most Advanced Open Source Relational Database
-- [`Redis`](https://redis.io): Open source, in-memory data store used by millions as a cache, message broker and more.
-- [`ARQ`](https://arq-docs.helpmanual.io) Job queues and RPC in python with asyncio and redis.
-- [`Docker Compose`](https://docs.docker.com/compose/) With a single command, create and start all the services from your configuration.
-- [`NGINX`](https://nginx.org/en/) High-performance low resource consumption web server used for Reverse Proxy and Load Balancing.
+| Kategori | Teknologi | Tujuan |
+|----------|-----------|---------|
+| **Backend API** | FastAPI + SQLAlchemy 2.0 | RESTful API dengan async support |
+| **Database** | PostgreSQL + pgvector | Relational data + Vector similarity search |
+| **AI/ML Services** | Embedding Service + LLM Service | Text vectorization + Natural language processing |
+| **Search Engine** | Supabase Vector Functions | Optimized similarity search dengan HNSW indexing |
+| **Task Processing** | Document Processor + Scheduler | Automated document ingestion pipeline |
+| **Authentication** | JWT + Optional Auth | Secure API access dengan public endpoints |
+| **Deployment** | Docker + Docker Compose | Containerized deployment |
 
-> \[!TIP\] 
-> There's a `SQLModel` version as well, but it's no longer updated: [SQLModel-boilerplate](https://github.com/igorbenav/SQLModel-boilerplate).
-
-## 1. Features
-
-- ⚡️ Fully async
-- 🚀 Pydantic V2 and SQLAlchemy 2.0
-- 🔐 User authentication with JWT
-- 🍪 Cookie based refresh token
-- 🏬 Easy redis caching
-- 👜 Easy client-side caching
-- 🚦 ARQ integration for task queue
-- ⚙️ Efficient and robust queries with <a href="https://github.com/benavlabs/fastcrud">fastcrud</a>
-- ⎘ Out of the box offset and cursor pagination support with <a href="https://github.com/benavlabs/fastcrud">fastcrud</a>
-- 🛑 Rate Limiter dependency
-- 👮 FastAPI docs behind authentication and hidden based on the environment
-- 🔧 Modern and light admin interface powered by [CRUDAdmin](https://github.com/benavlabs/crudadmin)
-- 🚚 Easy running with docker compose
-- ⚖️ NGINX Reverse Proxy and Load Balancing
-
-## 2. Contents
-
-0. [About](#0-about)
-1. [Features](#1-features)
-1. [Contents](#2-contents)
-1. [Prerequisites](#3-prerequisites)
-   1. [Environment Variables (.env)](#31-environment-variables-env)
-   1. [Docker Compose](#32-docker-compose-preferred)
-   1. [From Scratch](#33-from-scratch)
-1. [Usage](#4-usage)
-   1. [Docker Compose](#41-docker-compose)
-   1. [From Scratch](#42-from-scratch)
-      1. [Packages](#421-packages)
-      1. [Running PostgreSQL With Docker](#422-running-postgresql-with-docker)
-      1. [Running Redis with Docker](#423-running-redis-with-docker)
-      1. [Running the API](#424-running-the-api)
-   1. [Creating the first superuser](#43-creating-the-first-superuser)
-   1. [Database Migrations](#44-database-migrations)
-1. [Extending](#5-extending)
-   1. [Project Structure](#51-project-structure)
-   1. [Database Model](#52-database-model)
-   1. [SQLAlchemy Models](#53-sqlalchemy-models)
-   1. [Pydantic Schemas](#54-pydantic-schemas)
-   1. [Alembic Migrations](#55-alembic-migrations)
-   1. [CRUD](#56-crud)
-   1. [Routes](#57-routes)
-      1. [Paginated Responses](#571-paginated-responses)
-      1. [HTTP Exceptions](#572-http-exceptions)
-   1. [Caching](#58-caching)
-   1. [More Advanced Caching](#59-more-advanced-caching)
-   1. [ARQ Job Queues](#510-arq-job-queues)
-   1. [Rate Limiting](#511-rate-limiting)
-   1. [JWT Authentication](#512-jwt-authentication)
-   1. [Admin Panel](#513-admin-panel)
-   1. [Running](#514-running)
-   1. [Create Application](#515-create-application)
-   2. [Opting Out of Services](#516-opting-out-of-services)
-1. [Running in Production](#6-running-in-production)
-   1. [Uvicorn Workers with Gunicorn](#61-uvicorn-workers-with-gunicorn)
-   1. [Running With NGINX](#62-running-with-nginx)
-      1. [One Server](#621-one-server)
-      1. [Multiple Servers](#622-multiple-servers)
-1. [Testing](#7-testing)
-1. [Contributing](#8-contributing)
-1. [References](#9-references)
-1. [License](#10-license)
-1. [Contact](#11-contact)
-
-______________________________________________________________________
-
-## 3. Prerequisites
-
-> 📖 **[See detailed installation guide in our docs](https://benavlabs.github.io/FastAPI-boilerplate/getting-started/installation/)**
-
-### 3.0 Start
-
-Start by using the template, and naming the repository to what you want.
-
-<p align="left">
-    <img src="https://user-images.githubusercontent.com/43156212/277866726-975d1c98-b1c9-4c8e-b4bd-001c8a5728cb.png" alt="clicking use this template button, then create a new repository option" width="35%" height="auto">
-</p>
-
-Then clone your created repository (I'm using the base for the example)
-
-```sh
-git clone https://github.com/igormagalhaesr/FastAPI-boilerplate
-```
-
-> \[!TIP\]
-> If you are in a hurry, you may use one of the following templates (containing a `.env`, `docker-compose.yml` and `Dockerfile`):
-
-- [Running locally with uvicorn](https://gist.github.com/igorbenav/48ad745120c3f77817e094f3a609111a)
-- [Runing in staging with gunicorn managing uvicorn workers](https://gist.github.com/igorbenav/d0518d4f6bdfb426d4036090f74905ee)
-- [Running in production with NGINX](https://gist.github.com/igorbenav/232c3b73339d6ca74e2bf179a5ef48a1)
-
-> \[!WARNING\]
-> Do not forget to place `docker-compose.yml` and `Dockerfile` in the `root` folder, while `.env` should be in the `src` folder.
-
-### 3.1 Environment Variables (.env)
-
-> 📖 **[See complete configuration guide in our docs](https://benavlabs.github.io/FastAPI-boilerplate/getting-started/configuration/)**
-
-Then create a `.env` file inside `src` directory:
-
-```sh
-touch .env
-```
-
-Inside of `.env`, create the following app settings variables:
+### Arsitektur Microservices
 
 ```
-# ------------- app settings -------------
-APP_NAME="Your app name here"
-APP_DESCRIPTION="Your app description here"
-APP_VERSION="0.1"
-CONTACT_NAME="Your name"
-CONTACT_EMAIL="Your email"
-LICENSE_NAME="The license you picked"
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Web Frontend  │    │  Mobile App     │    │  API Gateway    │
+│   (Next.js)     │◄───┤  (Voice)        │◄───┤  (FastAPI)      │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+                                                        │
+                              ┌─────────────────────────┼─────────────────────────┐
+                              │                         │                         │
+                    ┌─────────▼──────────┐    ┌─────────▼──────────┐    ┌─────────▼──────────┐
+                    │  Search Orchestrator│    │ Document Processor │    │  LLM Services     │
+                    │  (Business Logic)   │    │  (Bulk Ingestion)  │    │  (AI Analysis)    │
+                    └─────────┬──────────┘    └─────────┬──────────┘    └─────────┬──────────┘
+                              │                         │                         │
+                    ┌─────────▼──────────┐    ┌─────────▼──────────┐    ┌─────────▼──────────┐
+                    │  Vector Database   │    │  Document Store    │    │  Embedding Service │
+                    │  (pgvector)        │    │  (PostgreSQL)      │    │  (Text → Vector)   │
+                    └────────────────────┘    └────────────────────┘    └────────────────────┘
 ```
 
-For the database ([`if you don't have a database yet, click here`](#422-running-postgresql-with-docker)), create:
+---
 
-```
-# ------------- database -------------
-POSTGRES_USER="your_postgres_user"
-POSTGRES_PASSWORD="your_password"
-POSTGRES_SERVER="your_server" # default "localhost", if using docker compose you should use "db"
-POSTGRES_PORT=5432 # default "5432", if using docker compose you should use "5432"
-POSTGRES_DB="your_db"
+## 📋 Daftar Isi
+
+1. [🎯 Tentang CourtSight](#-tentang-courtsight)
+2. [🏗️ Arsitektur Sistem](#️-arsitektur-sistem)
+3. [📋 Daftar Isi](#-daftar-isi)
+4. [✅ Prerequisites](#-prerequisites)
+6. [🚀 Instalasi & Setup](#-instalasi--setup)
+   - [6.1 Clone Repository](#51-clone-repository)
+   - [6.2 Environment Variables](#52-environment-variables)
+   - [6.3 Database Setup](#53-database-setup)
+   - [6.4 Docker Setup](#54-docker-setup)
+   - [6.5 Database Migration](#55-database-migration)
+   - [6.6 Verifikasi Installation](#56-verifikasi-installation)
+6. [📚 Dokumentasi API](#-dokumentasi-api)
+7. [🔧 Konfigurasi Development](#-konfigurasi-development)
+8. [📊 Monitoring & Statistics](#-monitoring--statistics)
+9. [🔧 Troubleshooting](#-troubleshooting)
+10. [🤝 Contributing](#-contributing)
+11. [📄 License](#-license)
+
+---
+
+## ✅ Prerequisites
+
+Pastikan sistem Anda memiliki software berikut sebelum memulai instalasi:
+
+### System Requirements
+
+- **Operating System:** Linux, macOS, atau Windows dengan WSL2
+- **Python:** Version 3.11+ 
+- **Docker:** Version 20.10+
+- **Docker Compose:** Version 2.0+
+- **Git:** Version 2.30+
+- **Memory:** Minimum 4GB RAM (8GB+ recommended)
+- **Storage:** Minimum 10GB free space
+
+### Verifikasi Prerequisites
+
+```bash
+# Cek versi Python
+python --version  # Should be 3.11+
+
+# Cek versi Docker
+docker --version  # Should be 20.10+
+
+# Cek versi Docker Compose
+docker compose version  # Should be 2.0+
+
+# Cek versi Git
+git --version  # Should be 2.30+
 ```
 
-For database administration using PGAdmin create the following variables in the .env file
+---
 
+## 🚀 Instalasi & Setup
+
+### 6.1 Clone Repository
+
+```bash
+# Clone repository CourtSight
+git clone https://github.com/yourusername/courtsight.git
+cd courtsight
+
+# Checkout ke branch main (jika belum)
+git checkout main
 ```
-# ------------- pgadmin -------------
-PGADMIN_DEFAULT_EMAIL="your_email_address"
-PGADMIN_DEFAULT_PASSWORD="your_password"
+
+### 6.2 Environment Variables
+
+#### Langkah 1: Buat File Environment
+
+```bash
+# Masuk ke direktori src
+cd src
+
+# Buat file .env dari template
+cp .env.example .env
+
+# Edit file .env dengan editor favorit
+nano .env  # atau vim .env atau code .env
+```
+
+#### Langkah 2: Konfigurasi Environment Variables
+
+Buka file `.env` dan isi dengan konfigurasi berikut:
+
+```bash
+# ==================== APP SETTINGS ====================
+APP_NAME="CourtSight - AI Legal Intelligence Platform"
+APP_DESCRIPTION="Platform Kecerdasan Hukum Berbasis AI untuk Putusan Mahkamah Agung"
+APP_VERSION="1.0.0"
+CONTACT_NAME="CourtSight Team"
+CONTACT_EMAIL="support@courtsight.ai"
+LICENSE_NAME="MIT"
+
+# ==================== DATABASE SETTINGS ====================
+# PostgreSQL Configuration
+POSTGRES_USER="courtsight_user"
+POSTGRES_PASSWORD="courtsight_password_2024"
+POSTGRES_SERVER="db"  # "localhost" untuk development lokal
+POSTGRES_PORT=5432
+POSTGRES_DB="courtsight_db"
+
+# Database URL (akan dibuat otomatis)
+DATABASE_URL="postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_SERVER}:${POSTGRES_PORT}/${POSTGRES_DB}"
+
+# ==================== PGADMIN SETTINGS ====================
+PGADMIN_DEFAULT_EMAIL="admin@courtsight.ai"
+PGADMIN_DEFAULT_PASSWORD="admin_password_2024"
 PGADMIN_LISTEN_PORT=80
-```
 
-To connect to the database, log into the PGAdmin console with the values specified in `PGADMIN_DEFAULT_EMAIL` and `PGADMIN_DEFAULT_PASSWORD`.
+# ==================== SECURITY & AUTHENTICATION ====================
+# Generate secret key: openssl rand -hex 32
+SECRET_KEY="your_secret_key_here_run_openssl_rand_hex_32"
+ALGORITHM="HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+REFRESH_TOKEN_EXPIRE_DAYS=7
 
-Once in the main PGAdmin screen, click Add Server:
+# ==================== ADMIN USER ====================
+ADMIN_NAME="CourtSight Admin"
+ADMIN_EMAIL="admin@courtsight.ai"
+ADMIN_USERNAME="admin"
+ADMIN_PASSWORD="admin_password_2024"
 
-![pgadmin-connect](https://github.com/igorbenav/docs-images/blob/main/289698727-e15693b6-fae9-4ec6-a597-e70ab6f44133-3.png?raw=true)
+# ==================== CRUD ADMIN PANEL ====================
+CRUD_ADMIN_ENABLED=true
+CRUD_ADMIN_MOUNT_PATH="/admin"
+CRUD_ADMIN_MAX_SESSIONS=10
+CRUD_ADMIN_SESSION_TIMEOUT=1440
+SESSION_SECURE_COOKIES=true
+CRUD_ADMIN_TRACK_EVENTS=true
+CRUD_ADMIN_TRACK_SESSIONS=true
 
-1. Hostname/address is `db` (if using containers)
-1. Is the value you specified in `POSTGRES_PORT`
-1. Leave this value as `postgres`
-1. is the value you specified in `POSTGRES_USER`
-1. Is the value you specified in `POSTGRES_PASSWORD`
+# ==================== REDIS SETTINGS ====================
+# Redis Cache
+REDIS_CACHE_HOST="redis"  # "localhost" untuk development lokal
+REDIS_CACHE_PORT=6379
+CLIENT_CACHE_MAX_AGE=30
 
-For crypt:
-Start by running
+# Redis Queue (ARQ)
+REDIS_QUEUE_HOST="redis"
+REDIS_QUEUE_PORT=6379
 
-```sh
-openssl rand -hex 32
-```
+# Redis Rate Limiting
+REDIS_RATE_LIMIT_HOST="redis"
+REDIS_RATE_LIMIT_PORT=6379
+DEFAULT_RATE_LIMIT_LIMIT=100
+DEFAULT_RATE_LIMIT_PERIOD=3600
 
-And then create in `.env`:
-
-```
-# ------------- crypt -------------
-SECRET_KEY= # result of openssl rand -hex 32
-ALGORITHM= # pick an algorithm, default HS256
-ACCESS_TOKEN_EXPIRE_MINUTES= # minutes until token expires, default 30
-REFRESH_TOKEN_EXPIRE_DAYS= # days until token expires, default 7
-```
-
-Then for the first admin user:
-
-```
-# ------------- admin -------------
-ADMIN_NAME="your_name"
-ADMIN_EMAIL="your_email"
-ADMIN_USERNAME="your_username"
-ADMIN_PASSWORD="your_password"
-```
-
-For the CRUDAdmin panel:
-
-```
-# ------------- crud admin -------------
-CRUD_ADMIN_ENABLED=true                    # default=true, set to false to disable admin panel
-CRUD_ADMIN_MOUNT_PATH="/admin"             # default="/admin", path where admin panel will be mounted
-
-# ------------- crud admin security -------------
-CRUD_ADMIN_MAX_SESSIONS=10                 # default=10, maximum concurrent sessions per user
-CRUD_ADMIN_SESSION_TIMEOUT=1440            # default=1440 (24 hours), session timeout in minutes
-SESSION_SECURE_COOKIES=true                # default=true, use secure cookies
-
-# ------------- crud admin tracking -------------
-CRUD_ADMIN_TRACK_EVENTS=true               # default=true, track admin events
-CRUD_ADMIN_TRACK_SESSIONS=true             # default=true, track admin sessions in database
-
-# ------------- crud admin redis (optional for production) -------------
-CRUD_ADMIN_REDIS_ENABLED=false             # default=false, use Redis for session storage
-CRUD_ADMIN_REDIS_HOST="localhost"          # default="localhost", Redis host for admin sessions
-CRUD_ADMIN_REDIS_PORT=6379                 # default=6379, Redis port for admin sessions
-CRUD_ADMIN_REDIS_DB=0                      # default=0, Redis database for admin sessions
-CRUD_ADMIN_REDIS_PASSWORD=""               # optional, Redis password for admin sessions
-CRUD_ADMIN_REDIS_SSL=false                 # default=false, use SSL for Redis connection
-```
-
-**Session Backend Options:**
-- **Memory** (default): Development-friendly, sessions reset on restart
-- **Redis** (production): High performance, scalable, persistent sessions  
-- **Database**: Audit-friendly with admin visibility
-- **Hybrid**: Redis performance + database audit trail
-
-For redis caching:
-
-```
-# ------------- redis cache-------------
-REDIS_CACHE_HOST="your_host" # default "localhost", if using docker compose you should use "redis"
-REDIS_CACHE_PORT=6379 # default "6379", if using docker compose you should use "6379"
-```
-
-And for client-side caching:
-
-```
-# ------------- redis client-side cache -------------
-CLIENT_CACHE_MAX_AGE=30 # default "30"
-```
-
-For ARQ Job Queues:
-
-```
-# ------------- redis queue -------------
-REDIS_QUEUE_HOST="your_host" # default "localhost", if using docker compose you should use "redis"
-REDIS_QUEUE_PORT=6379 # default "6379", if using docker compose you should use "6379"
-```
-
-> \[!WARNING\]
-> You may use the same redis for both caching and queue while developing, but the recommendation is using two separate containers for production.
-
-To create the first tier:
-
-```
-# ------------- first tier -------------
+# ==================== TIER SETTINGS ====================
 TIER_NAME="free"
+
+# ==================== ENVIRONMENT ====================
+ENVIRONMENT="local"  # local, staging, production
+
+# ==================== AI & VECTOR SEARCH SETTINGS ====================
+# Embedding Settings
+EMBEDDING_MODEL="all-MiniLM-L6-v2"
+EMBEDDING_DIMENSION=384
+VECTOR_SIMILARITY_THRESHOLD=0.7
+
+# LLM Settings (to be configured with actual AI services)
+LLM_PROVIDER="openai"  # placeholder
+LLM_MODEL="gpt-3.5-turbo"  # placeholder
+LLM_MAX_TOKENS=1000
+
+# ==================== DOCUMENT PROCESSING SETTINGS ====================
+# Supreme Court Website
+MAHKAMAH_AGUNG_BASE_URL="https://putusan3.mahkamahagung.go.id"
+SCRAPING_USER_AGENT="CourtSight-Bot/1.0"
+REQUEST_DELAY_SECONDS=1
+
+# Processing Limits
+MAX_CONCURRENT_DOWNLOADS=5
+BATCH_SIZE=50
+DAILY_PROCESSING_LIMIT=1000
+ENABLE_AUTO_SCHEDULING=true
+DAILY_PROCESSING_TIME="02:00"
+DAILY_PROCESSING_TIMEZONE="Asia/Jakarta"
+
+# ==================== SUPABASE SETTINGS (Optional) ====================
+# Jika menggunakan Supabase sebagai database
+# SUPABASE_URL="your_supabase_url"
+# SUPABASE_ANON_KEY="your_supabase_anon_key"
+# SUPABASE_SERVICE_ROLE_KEY="your_supabase_service_role_key"
 ```
 
-For the rate limiter:
+#### Langkah 3: Generate Secret Key
 
-```
-# ------------- redis rate limit -------------
-REDIS_RATE_LIMIT_HOST="localhost"   # default="localhost", if using docker compose you should use "redis"
-REDIS_RATE_LIMIT_PORT=6379          # default=6379, if using docker compose you should use "6379"
+```bash
+# Generate secret key untuk JWT
+openssl rand -hex 32
 
-
-# ------------- default rate limit settings -------------
-DEFAULT_RATE_LIMIT_LIMIT=10         # default=10
-DEFAULT_RATE_LIMIT_PERIOD=3600      # default=3600
+# Copy hasil dan paste ke SECRET_KEY di file .env
 ```
 
-And Finally the environment:
+### 6.3 Database Setup
 
-```
-# ------------- environment -------------
-ENVIRONMENT="local"
-```
+#### Opsi A: Menggunakan Docker (Recommended)
 
-`ENVIRONMENT` can be one of `local`, `staging` and `production`, defaults to local, and changes the behavior of api `docs` endpoints:
+Database PostgreSQL akan otomatis dibuat saat menjalankan `docker compose up`. Lanjut ke [6.4 Docker Setup](#54-docker-setup).
 
-- **local:** `/docs`, `/redoc` and `/openapi.json` available
-- **staging:** `/docs`, `/redoc` and `/openapi.json` available for superusers
-- **production:** `/docs`, `/redoc` and `/openapi.json` not available
+#### Opsi B: Setup Database Manual (Development)
 
-### 3.2 Docker Compose (preferred)
+```bash
+# Install PostgreSQL dan pgvector
+sudo apt update
+sudo apt install postgresql postgresql-contrib
 
-To do it using docker compose, ensure you have docker and docker compose installed, then:
-While in the base project directory (FastAPI-boilerplate here), run:
+# Start PostgreSQL service
+sudo systemctl start postgresql
+sudo systemctl enable postgresql
 
-```sh
-docker compose up
-```
+# Create database dan user
+sudo -u postgres psql
 
-You should have a `web` container, `postgres` container, a `worker` container and a `redis` container running.
-Then head to `http://127.0.0.1:8000/docs`.
+-- Di dalam PostgreSQL shell:
+CREATE USER courtsight_user WITH PASSWORD 'courtsight_password_2024';
+CREATE DATABASE courtsight_db OWNER courtsight_user;
+GRANT ALL PRIVILEGES ON DATABASE courtsight_db TO courtsight_user;
 
-### 3.3 From Scratch
-
-Install uv:
-
-```sh
-pip install uv
+-- Enable pgvector extension
+\c courtsight_db
+CREATE EXTENSION IF NOT EXISTS vector;
+\q
 ```
 
-## 4. Usage
+### 6.4 Docker Setup
 
-> 📖 **[See complete first run guide in our docs](https://benavlabs.github.io/FastAPI-boilerplate/getting-started/first-run/)**
+#### Langkah 1: Verifikasi Docker
 
-### 4.1 Docker Compose
+```bash
+# Pastikan Docker daemon berjalan
+docker info
 
-If you used docker compose, your setup is done. You just need to ensure that when you run (while in the base folder):
-
-```sh
-docker compose up
+# Pastikan Docker Compose tersedia
+docker compose version
 ```
 
-You get the following outputs (in addition to many other outputs):
+#### Langkah 2: Build dan Start Services
 
-```sh
-fastapi-boilerplate-worker-1  | ... redis_version=x.x.x mem_usage=999K clients_connected=1 db_keys=0
-...
-fastapi-boilerplate-db-1      | ... [1] LOG:  database system is ready to accept connections
-...
-fastapi-boilerplate-web-1     | INFO:     Application startup complete.
+```bash
+# Kembali ke root directory project
+cd ..
+
+# Build images dan start all services
+docker compose up --build
+
+# Atau jalankan di background
+docker compose up --build -d
 ```
 
-So you may skip to [5. Extending](#5-extending).
+#### Langkah 3: Verifikasi Services
 
-### 4.2 From Scratch
+```bash
+# Cek status container
+docker compose ps
 
-#### 4.2.1. Packages
-
-In the `root` directory (`FastAPI-boilerplate` if you didn't change anything), run to install required packages:
-
-```sh
-uv sync
+# Output yang diharapkan:
+# NAME               IMAGE          COMMAND                  SERVICE   CREATED       STATUS         PORTS
+# courtsight-web-1   courtsight-web "uvicorn app.main:ap…"   web       X minutes ago Up X minutes   0.0.0.0:8000->8000/tcp
+# courtsight-db-1    postgres:15    "docker-entrypoint.s…"  db        X minutes ago Up X minutes   5432/tcp
+# courtsight-redis-1 redis:alpine   "docker-entrypoint.s…"  redis     X minutes ago Up X minutes   6379/tcp
 ```
 
-Ensuring it ran without any problem.
+### 6.5 Database Migration
 
-#### 4.2.2. Running PostgreSQL With Docker
+#### Langkah 1: Jalankan Migrasi
 
-> \[!NOTE\]
-> If you already have a PostgreSQL running, you may skip this step.
+```bash
+# Jalankan database migrations
+docker compose exec web alembic upgrade head
 
-Install docker if you don't have it yet, then run:
-
-```sh
-docker pull postgres
+# Output yang diharapkan:
+# INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+# INFO  [alembic.runtime.migration] Will assume transactional DDL.
+# INFO  [alembic.runtime.migration] Running upgrade  -> 6441b28b335c, add_legal_document_tables_with_pgvector
+# INFO  [alembic.runtime.migration] Running upgrade 6441b28b335c -> e169d1834abd, add_supabase_vector_functions_and_indexes
 ```
 
-And pick the port, name, user and password, replacing the fields:
+#### Langkah 2: Buat Superuser
 
-```sh
-docker run -d \
-    -p {PORT}:{PORT} \
-    --name {NAME} \
-    -e POSTGRES_PASSWORD={PASSWORD} \
-    -e POSTGRES_USER={USER} \
-    postgres
+```bash
+# Buat first admin user
+docker compose exec web python scripts/create_first_superuser.py
+
+# Buat first tier
+docker compose exec web python scripts/create_first_tier.py
 ```
 
-Such as:
+#### Langkah 3: Verifikasi Database
 
-```sh
-docker run -d \
-    -p 5432:5432 \
-    --name postgres \
-    -e POSTGRES_PASSWORD=1234 \
-    -e POSTGRES_USER=postgres \
-    postgres
+```bash
+# Connect ke database dan cek tables
+docker compose exec db psql -U courtsight_user -d courtsight_db
+
+-- Di dalam PostgreSQL shell:
+\dt  -- List semua tables
+\d legal_document  -- Describe legal_document table
+SELECT COUNT(*) FROM legal_document;  -- Should return 0
+\q
 ```
 
-#### 4.2.3. Running redis With Docker
+### 6.6 Verifikasi Installation
 
-> \[!NOTE\]
-> If you already have a redis running, you may skip this step.
+#### Langkah 1: Test API Health
 
-Install docker if you don't have it yet, then run:
+```bash
+# Test basic API health
+curl http://localhost:8000/health
 
-```sh
-docker pull redis:alpine
+# Expected output:
+# {"status": "healthy", "timestamp": "2024-XX-XX..."}
 ```
 
-And pick the name and port, replacing the fields:
+#### Langkah 2: Test API Endpoints
 
-```sh
-docker run -d \
-  --name {NAME}  \
-  -p {PORT}:{PORT} \
-redis:alpine
+```bash
+# Test legal search statistics
+curl http://localhost:8000/api/v1/legal-search/stats
+
+# Expected output:
+# {"total_statistics": {"total_documents": 0, ...}}
+
+# Test document processing status
+curl http://localhost:8000/api/v1/document-processing/status
+
+# Expected output:
+# {"is_running": false, "queue_size": 0, ...}
 ```
 
-Such as
+#### Langkah 3: Access Web Interfaces
 
-```sh
-docker run -d \
-  --name redis  \
-  -p 6379:6379 \
-redis:alpine
+1. **API Documentation:** http://localhost:8000/docs
+2. **Alternative API Docs:** http://localhost:8000/redoc
+3. **Admin Panel:** http://localhost:8000/admin
+4. **PgAdmin:** http://localhost:5050 (login dengan PGADMIN credentials)
+
+#### Langkah 4: Test Database Integration
+
+```bash
+# Create sample legal document
+docker compose exec web python -c "
+import asyncio
+from app.core.db.database import async_get_db
+from app.models.legal_document import LegalDocument
+from app.crud.crud_legal_documents import crud_legal_documents
+from app.schemas.legal_search import LegalDocumentCreate
+from datetime import date
+
+async def create_sample():
+    async for db in async_get_db():
+        sample_doc = LegalDocumentCreate(
+            case_number='SAMPLE-001/2024',
+            court_name='Pengadilan Negeri Jakarta Pusat',
+            jurisdiction='Indonesia',
+            title='Sample Legal Document',
+            full_text='This is a sample legal document for testing.',
+            summary='Test document',
+            decision_date=date.today(),
+            case_type='Test',
+            legal_area='Test Area',
+            content_hash='sample_hash_123'
+        )
+        
+        doc = await crud_legal_documents.create(db, obj_in=sample_doc)
+        print(f'Sample document created with ID: {doc.id}')
+        break
+
+asyncio.run(create_sample())
+"
+
+# Test document retrieval
+curl http://localhost:8000/api/v1/legal-search/documents
 ```
 
-#### 4.2.4. Running the API
-
-While in the `root` folder, run to start the application with uvicorn server:
-
-```sh
-uv run uvicorn src.app.main:app --reload
-```
-
-> \[!TIP\]
-> The --reload flag enables auto-reload once you change (and save) something in the project
-
-### 4.3 Creating the first superuser
-
-#### 4.3.1 Docker Compose
-
-> \[!WARNING\]
-> Make sure DB and tables are created before running create_superuser (db should be running and the api should run at least once before)
-
-If you are using docker compose, you should uncomment this part of the docker-compose.yml:
-
-```
-  #-------- uncomment to create first superuser --------
-  # create_superuser:
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile
-  #   env_file:
-  #     - ./src/.env
-  #   depends_on:
-  #     - db
-  #   command: python -m src.scripts.create_first_superuser
-  #   volumes:
-  #     - ./src:/code/src
-```
-
-Getting:
-
-```
-  #-------- uncomment to create first superuser --------
-  create_superuser:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    env_file:
-      - ./src/.env
-    depends_on:
-      - db
-    command: python -m src.scripts.create_first_superuser
-    volumes:
-      - ./src:/code/src
-```
-
-While in the base project folder run to start the services:
-
-```sh
-docker-compose up -d
-```
-
-It will automatically run the create_superuser script as well, but if you want to rerun eventually:
-
-```sh
-docker-compose run --rm create_superuser
-```
-
-to stop the create_superuser service:
-
-```sh
-docker-compose stop create_superuser
-```
-
-#### 4.3.2 From Scratch
-
-While in the `root` folder, run (after you started the application at least once to create the tables):
-
-```sh
-uv run python -m src.scripts.create_first_superuser
-```
-
-### 4.3.3 Creating the first tier
-
-> \[!WARNING\]
-> Make sure DB and tables are created before running create_tier (db should be running and the api should run at least once before)
-
-To create the first tier it's similar, you just replace `create_superuser` for `create_tier` service or `create_first_superuser` to `create_first_tier` for scripts. If using `docker compose`, do not forget to uncomment the `create_tier` service in `docker-compose.yml`.
-
-### 4.4 Database Migrations
-
-> \[!WARNING\]
-> To create the tables if you did not create the endpoints, ensure that you import the models in src/app/models/__init__.py. This step is crucial to create the new tables.
-
-If you are using the db in docker, you need to change this in `docker-compose.yml` to run migrations:
-
-```sh
-  db:
-    image: postgres:13
-    env_file:
-      - ./src/.env
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-    # -------- replace with comment to run migrations with docker --------
-    expose:
-      - "5432"
-    # ports:
-    #  - 5432:5432
-```
-
-Getting:
-
-```sh
-  db:
-    ...
-    # expose:
-    #  - "5432"
-    ports:
-      - 5432:5432
-```
-
-While in the `src` folder, run Alembic migrations:
-
-```sh
-uv run alembic revision --autogenerate
-```
-
-And to apply the migration
-
-```sh
-uv run alembic upgrade head
-```
-
-> [!NOTE]
-> If you do not have uv, you may run it without uv after running `pip install alembic`
-
-## 5. Extending
+## 6. Extending
 
 > 📖 **[See comprehensive development guide in our docs](https://benavlabs.github.io/FastAPI-boilerplate/user-guide/development/)**
 
-### 5.1 Project Structure
+### 6.1 Project Structure
 
 > 📖 **[See detailed project structure guide in our docs](https://benavlabs.github.io/FastAPI-boilerplate/user-guide/project-structure/)**
 
@@ -665,7 +571,6 @@ First, you may want to take a look at the project structure and understand what 
     │   ├── crud                      # CRUD operations for the application.
     │   │   ├── __init__.py
     │   │   ├── crud_base.py          # Base class for CRUD operations.
-    │   │   ├── crud_posts.py         # CRUD operations for posts.
     │   │   ├── crud_rate_limit.py    # CRUD operations for rate limiting.
     │   │   ├── crud_tier.py          # CRUD operations for user tiers.
     │   │   ├── crud_users.py         # CRUD operations for users.
@@ -679,7 +584,6 @@ First, you may want to take a look at the project structure and understand what 
     │   │
     │   ├── models                    # ORM models for the application.
     │   │   ├── __init__.py
-    │   │   ├── post.py               # ORM model for posts.
     │   │   ├── rate_limit.py         # ORM model for rate limiting.
     │   │   ├── tier.py               # ORM model for user tiers.
     │   │   └── user.py               # ORM model for users.
@@ -687,7 +591,6 @@ First, you may want to take a look at the project structure and understand what 
     │   └── schemas                   # Pydantic schemas for data validation.
     │       ├── __init__.py
     │       ├── job.py                # Schema for background jobs.
-    │       ├── post.py               # Schema for post data.
     │       ├── rate_limit.py         # Schema for rate limiting data.
     │       ├── tier.py               # Schema for user tier data.
     │       └── user.py               # Schema for user data.
@@ -706,17 +609,17 @@ First, you may want to take a look at the project structure and understand what 
         └── create_first_tier.py      # Script to create the first user tier.
 ```
 
-### 5.2 Database Model
+### 6.2 Database Model
 
 Create the new entities and relationships and add them to the model <br>
 ![diagram](https://user-images.githubusercontent.com/43156212/284426387-bdafc637-0473-4b71-890d-29e79da288cf.png)
 
-#### 5.2.1 Token Blacklist
+#### 6.2.1 Token Blacklist
 
 Note that this table is used to blacklist the `JWT` tokens (it's how you log a user out) <br>
 ![diagram](https://user-images.githubusercontent.com/43156212/284426382-b2f3c0ca-b8ea-4f20-b47e-de1bad2ca283.png)
 
-### 5.3 SQLAlchemy Models
+### 6.3 SQLAlchemy Models
 
 > 📖 **[See database models guide in our docs](https://benavlabs.github.io/FastAPI-boilerplate/user-guide/database/models/)**
 
@@ -740,7 +643,7 @@ class Entity(Base):
     ...
 ```
 
-### 5.4 Pydantic Schemas
+### 6.4 Pydantic Schemas
 
 > 📖 **[See database schemas guide in our docs](https://benavlabs.github.io/FastAPI-boilerplate/user-guide/database/schemas/)**
 
@@ -790,7 +693,7 @@ class EntityDelete(BaseModel):
     deleted_at: datetime
 ```
 
-### 5.5 Alembic Migrations
+### 6.5 Alembic Migrations
 
 > 📖 **[See database migrations guide in our docs](https://benavlabs.github.io/FastAPI-boilerplate/user-guide/database/migrations/)**
 
@@ -809,7 +712,7 @@ And to apply the migration
 uv run alembic upgrade head
 ```
 
-### 5.6 CRUD
+### 6.6 CRUD
 
 > 📖 **[See CRUD operations guide in our docs](https://benavlabs.github.io/FastAPI-boilerplate/user-guide/database/crud/)**
 
@@ -836,7 +739,7 @@ CRUDUser = FastCRUD[User, UserCreateInternal, UserUpdate, UserUpdateInternal, Us
 crud_users = CRUDUser(User)
 ```
 
-#### 5.6.1 Get
+#### 6.6.1 Get
 
 When actually using the crud in an endpoint, to get data you just pass the database connection and the attributes as kwargs:
 
@@ -845,7 +748,7 @@ When actually using the crud in an endpoint, to get data you just pass the datab
 user = await crud_users.get(db=db, email=user.email)
 ```
 
-#### 5.6.2 Get Multi
+#### 6.6.2 Get Multi
 
 To get a list of objects with the attributes, you should use the get_multi:
 
@@ -884,7 +787,7 @@ Which will return a python dict with the following structure:
 }
 ```
 
-#### 5.6.3 Create
+#### 6.6.3 Create
 
 To create, you pass a `CreateSchemaType` object with the attributes, such as a `UserCreate` pydantic schema:
 
@@ -898,7 +801,7 @@ user_internal = UserCreate(name="user", username="myusername", email="user@examp
 crud_users.create(db=db, object=user_internal)
 ```
 
-#### 5.6.4 Exists
+#### 6.6.4 Exists
 
 To just check if there is at least one row that matches a certain set of attributes, you should use `exists`
 
@@ -908,7 +811,7 @@ To just check if there is at least one row that matches a certain set of attribu
 crud_users.exists(db=db, email=user @ example.com)
 ```
 
-#### 5.6.5 Count
+#### 6.6.5 Count
 
 You can also get the count of a certain object with the specified filter:
 
@@ -917,7 +820,7 @@ You can also get the count of a certain object with the specified filter:
 user = await crud_users.count(db=db, name="User Userson")
 ```
 
-#### 5.6.6 Update
+#### 6.6.6 Update
 
 To update you pass an `object` which may be a `pydantic schema` or just a regular `dict`, and the kwargs.
 You will update with `objects` the rows that match your `kwargs`.
@@ -928,7 +831,7 @@ You will update with `objects` the rows that match your `kwargs`.
 crud_users.update(db=db, object={"name": "Updated Name"}, username="myusername")
 ```
 
-#### 5.6.7 Delete
+#### 6.6.7 Delete
 
 To delete we have two options:
 
@@ -945,7 +848,7 @@ crud_users.delete(db=db, username="myusername")
 crud_users.db_delete(db=db, username="myusername")
 ```
 
-#### 5.6.8 Get Joined
+#### 6.6.8 Get Joined
 
 To retrieve data with a join operation, you can use the get_joined method from your CRUD module. Here's how to do it:
 
@@ -971,7 +874,7 @@ result = await crud_users.get_joined(
 
 This method allows you to perform a join operation, selecting columns from both models, and retrieve a single record.
 
-#### 5.6.9 Get Multi Joined
+#### 6.6.9 Get Multi Joined
 
 Similarly, to retrieve multiple records with a join operation, you can use the get_multi_joined method. Here's how:
 
@@ -1016,7 +919,7 @@ crud_user.get(db=db, username="myusername")
 crud_user.get(db=db, username="myusername", schema_to_select=UserRead)
 ```
 
-### 5.7 Routes
+### 6.7 Routes
 
 > 📖 **[See API endpoints guide in our docs](https://benavlabs.github.io/FastAPI-boilerplate/user-guide/api/endpoints/)**
 
@@ -1058,7 +961,7 @@ router = APIRouter(prefix="/v1")  # this should be there already
 router.include_router(entity_router)
 ```
 
-#### 5.7.1 Paginated Responses
+#### 6.7.1 Paginated Responses
 
 > 📖 **[See API pagination guide in our docs](https://benavlabs.github.io/FastAPI-boilerplate/user-guide/api/pagination/)**
 
@@ -1124,7 +1027,7 @@ async def read_entities(
     return paginated_response(crud_data=entities_data, page=page, items_per_page=items_per_page)
 ```
 
-#### 5.7.2 HTTP Exceptions
+#### 6.7.2 HTTP Exceptions
 
 > 📖 **[See API exceptions guide in our docs](https://benavlabs.github.io/FastAPI-boilerplate/user-guide/api/exceptions/)**
 
@@ -1153,7 +1056,7 @@ if not post:
 - `DuplicateValueException`: 422 unprocessable entity
 - `RateLimitException`: 429 too many requests
 
-### 5.8 Caching
+### 6.8 Caching
 
 > 📖 **[See comprehensive caching guide in our docs](https://benavlabs.github.io/FastAPI-boilerplate/user-guide/caching/)**
 
@@ -1203,7 +1106,7 @@ In this case, what will happen is:
 
 Passing resource_id_name is usually preferred.
 
-### 5.9 More Advanced Caching
+### 6.9 More Advanced Caching
 
 The behaviour of the `cache` decorator changes based on the request method of your endpoint.
 It caches the result if you are passing it to a **GET** endpoint, and it invalidates the cache with this key_prefix and id if passed to other endpoints (**PATCH**, **DELETE**).
@@ -1318,7 +1221,7 @@ Now it will invalidate all caches with a key that matches the pattern `"{usernam
 
 For `client-side caching`, all you have to do is let the `Settings` class defined in `app/core/config.py` inherit from the `ClientSideCacheSettings` class. You can set the `CLIENT_CACHE_MAX_AGE` value in `.env,` it defaults to 60 (seconds).
 
-### 5.10 ARQ Job Queues
+### 6.10 ARQ Job Queues
 
 > 📖 **[See background tasks guide in our docs](https://benavlabs.github.io/FastAPI-boilerplate/user-guide/background-tasks/)**
 
@@ -1415,7 +1318,7 @@ async def your_background_function(
 > [!WARNING]
 > When using database sessions, you will want to use Pydantic objects. However, these objects don't mingle well with the seralization required by ARQ tasks and will be retrieved as a dictionary.
 
-### 5.11 Rate Limiting
+### 6.11 Rate Limiting
 
 > 📖 **[See rate limiting guide in our docs](https://benavlabs.github.io/FastAPI-boilerplate/user-guide/rate-limiting/)**
 
@@ -1478,7 +1381,7 @@ Now let's read all the tiers available (`GET api/v1/tiers`):
     {
       "name": "free",
       "id": 1,
-      "created_at": "2023-11-11T05:57:25.420360"
+      "created_at": "2023-11-11T05:57:26.420360"
     },
     {
       "name": "pro",
@@ -1531,11 +1434,11 @@ Note that for flexibility (since this is a boilerplate), it's not necessary to p
 > \[!WARNING\]
 > If a user does not have a `tier` or the tier does not have a defined `rate limit` for the path and the token is still passed to the request, the default `limit` and `period` will be used, this will be saved in `app/logs`.
 
-### 5.12 JWT Authentication
+### 6.12 JWT Authentication
 
 > 📖 **[See authentication guide in our docs](https://benavlabs.github.io/FastAPI-boilerplate/user-guide/authentication/)**
 
-#### 5.12.1 Details
+#### 6.12.1 Details
 
 The JWT in this boilerplate is created in the following way:
 
@@ -1567,7 +1470,7 @@ You may change it to suit your needs. The possible options for `samesite` are:
 - `Strict`: Cookies are sent only on top-level navigations from the same site that set the cookie, enhancing privacy but potentially disrupting user sessions.
 - `None`: Cookies will be sent with both same-site and cross-site requests.
 
-#### 5.12.2 Usage
+#### 6.12.2 Usage
 
 What you should do with the client is:
 
@@ -1579,7 +1482,7 @@ What you should do with the client is:
 
 This authentication setup in the provides a robust, secure, and user-friendly way to handle user sessions in your API applications.
 
-### 5.13 Admin Panel
+### 6.13 Admin Panel
 
 > 📖 **[See admin panel guide in our docs](https://benavlabs.github.io/FastAPI-boilerplate/user-guide/admin-panel/)**
 
@@ -1589,7 +1492,7 @@ The boilerplate includes a powerful web-based admin interface built with [CRUDAd
 > - **📚 Documentation**: [benavlabs.github.io/crudadmin](https://benavlabs.github.io/crudadmin/)
 > - **💻 GitHub**: [github.com/benavlabs/crudadmin](https://github.com/benavlabs/crudadmin)
 
-#### 5.13.1 Features
+#### 6.13.1 Features
 
 The admin panel includes:
 
@@ -1601,7 +1504,7 @@ The admin panel includes:
 - **Redis Integration**: Optional Redis support for session storage
 - **Event Tracking**: Track admin actions and sessions
 
-#### 5.13.2 Access
+#### 6.13.2 Access
 
 Once your application is running, you can access the admin panel at:
 
@@ -1613,7 +1516,7 @@ Use the admin credentials you defined in your `.env` file:
 - Username: `ADMIN_USERNAME`
 - Password: `ADMIN_PASSWORD`
 
-#### 5.13.3 Configuration
+#### 6.13.3 Configuration
 
 The admin panel is highly configurable through environment variables:
 
@@ -1624,7 +1527,7 @@ The admin panel is highly configurable through environment variables:
 
 See the [environment variables section](#31-environment-variables-env) for complete configuration options.
 
-#### 5.13.4 Customization
+#### 6.13.4 Customization
 
 **Adding New Models**
 
@@ -1688,7 +1591,7 @@ CRUD_ADMIN_REDIS_HOST=localhost
 CRUD_ADMIN_REDIS_PORT=6379
 ```
 
-### 5.14 Running
+### 6.14 Running
 
 If you are using docker compose, just running the following command should ensure everything is working:
 
@@ -1708,7 +1611,7 @@ And for the worker:
 ```sh
 uv run arq src.app.core.worker.settings.WorkerSettings
 ```
-### 5.15 Create Application
+### 6.15 Create Application
 
 If you want to stop tables from being created every time you run the api, you should disable this here:
 
@@ -1731,7 +1634,7 @@ A few examples:
 - Add client-side cache middleware
 - Add Startup and Shutdown event handlers for cache, queue and rate limit
 
-### 5.16 Opting Out of Services
+### 6.16 Opting Out of Services
 
 To opt out of services (like `Redis`, `Queue`, `Rate Limiter`), head to the `Settings` class in `src/app/core/config`:
 
@@ -1827,324 +1730,3 @@ volumes:
   redis-data:
   #pgadmin-data:
 ```
-
-## 6. Running in Production
-
-> 📖 **[See production deployment guide in our docs](https://benavlabs.github.io/FastAPI-boilerplate/user-guide/production/)**
-
-### 6.1 Uvicorn Workers with Gunicorn
-
-In production you may want to run using gunicorn to manage uvicorn workers:
-
-```sh
-command: gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000
-```
-
-Here it's running with 4 workers, but you should test it depending on how many cores your machine has.
-
-To do this if you are using docker compose, just replace the comment:
-This part in `docker-compose.yml`:
-
-```YAML
-# docker-compose.yml
-
-# -------- replace with comment to run with gunicorn --------
-command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-# command: gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000
-```
-
-Should be changed to:
-
-```YAML
-# docker-compose.yml
-
-# -------- replace with comment to run with uvicorn --------
-# command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-command: gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000
-```
-
-And the same in `Dockerfile`:
-This part:
-
-```Dockerfile
-# Dockerfile
-
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
-# CMD ["gunicorn", "app.main:app", "-w", "4", "-k", "uvicorn.workers.UvicornWorker". "-b", "0.0.0.0:8000"]
-```
-
-Should be changed to:
-
-```Dockerfile
-# Dockerfile
-
-# CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
-CMD ["gunicorn", "app.main:app", "-w", "4", "-k", "uvicorn.workers.UvicornWorker". "-b", "0.0.0.0:8000"]
-```
-
-> \[!CAUTION\]
-> Do not forget to set the `ENVIRONMENT` in `.env` to `production` unless you want the API docs to be public.
-
-### 6.2 Running with NGINX
-
-NGINX is a high-performance web server, known for its stability, rich feature set, simple configuration, and low resource consumption. NGINX acts as a reverse proxy, that is, it receives client requests, forwards them to the FastAPI server (running via Uvicorn or Gunicorn), and then passes the responses back to the clients.
-
-To run with NGINX, you start by uncommenting the following part in your `docker-compose.yml`:
-
-```python
-# docker-compose.yml
-
-...
-# -------- uncomment to run with nginx --------
-# nginx:
-#   image: nginx:latest
-#   ports:
-#     - "80:80"
-#   volumes:
-#     - ./default.conf:/etc/nginx/conf.d/default.conf
-#   depends_on:
-#     - web
-...
-```
-
-Which should be changed to:
-
-```YAML
-# docker-compose.yml
-
-...
-  #-------- uncomment to run with nginx --------
-  nginx:
-    image: nginx:latest
-    ports:
-      - "80:80"
-    volumes:
-      - ./default.conf:/etc/nginx/conf.d/default.conf
-    depends_on:
-      - web
-...
-```
-
-Then comment the following part:
-
-```YAML
-# docker-compose.yml
-
-services:
-  web:
-    ...
-    # -------- Both of the following should be commented to run with nginx --------
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-    # command: gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000
-```
-
-Which becomes:
-
-```YAML
-# docker-compose.yml
-
-services:
-  web:
-    ...
-    # -------- Both of the following should be commented to run with nginx --------
-    # command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-    # command: gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000
-```
-
-Then pick the way you want to run (uvicorn or gunicorn managing uvicorn workers) in `Dockerfile`.
-The one you want should be uncommented, comment the other one.
-
-```Dockerfile
-# Dockerfile
-
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
-# CMD ["gunicorn", "app.main:app", "-w", "4", "-k", "uvicorn.workers.UvicornWorker". "-b", "0.0.0.0:8000"]
-```
-
-And finally head to `http://localhost/docs`.
-
-#### 6.2.1 One Server
-
-If you want to run with one server only, your setup should be ready. Just make sure the only part that is not a comment in `default.conf` is:
-
-```conf
-# default.conf
-
-# ---------------- Running With One Server ----------------
-server {
-    listen 80;
-
-    location / {
-        proxy_pass http://web:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
-
-So just type on your browser: `http://localhost/docs`.
-
-#### 6.2.2 Multiple Servers
-
-NGINX can distribute incoming network traffic across multiple servers, improving the efficiency and capacity utilization of your application.
-
-To run with multiple servers, just comment the `Running With One Server` part in `default.conf` and Uncomment the other one:
-
-```conf
-# default.conf
-
-# ---------------- Running With One Server ----------------
-...
-
-# ---------------- To Run with Multiple Servers, Uncomment below ----------------
-upstream fastapi_app {
-    server fastapi1:8000;  # Replace with actual server names or IP addresses
-    server fastapi2:8000;
-    # Add more servers as needed
-}
-
-server {
-    listen 80;
-
-    location / {
-        proxy_pass http://fastapi_app;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
-
-And finally, on your browser: `http://localhost/docs`.
-
-> \[!WARNING\]
-> Note that we are using `fastapi1:8000` and `fastapi2:8000` as examples, you should replace it with the actual name of your service and the port it's running on.
-
-## 7. Testing
-
-> 📖 **[See comprehensive testing guide in our docs](https://benavlabs.github.io/FastAPI-boilerplate/user-guide/testing/)**
-
-This project uses **fast unit tests** that don't require external services like databases or Redis. Tests are isolated using mocks and run in milliseconds.
-
-### 7.1 Writing Tests
-
-Create test files with the name `test_{entity}.py` in the `tests/` folder, replacing `{entity}` with what you're testing:
-
-```sh
-touch tests/test_items.py
-```
-
-Follow the structure in `tests/test_user.py` for examples. Our tests use:
-
-- **pytest** with **pytest-asyncio** for async support
-- **unittest.mock** for mocking dependencies  
-- **AsyncMock** for async function mocking
-- **Faker** for generating test data
-
-Example test structure:
-
-```python
-import pytest
-from unittest.mock import AsyncMock, patch
-from src.app.api.v1.users import write_user
-
-class TestWriteUser:
-    @pytest.mark.asyncio
-    async def test_create_user_success(self, mock_db, sample_user_data):
-        """Test successful user creation."""
-        with patch("src.app.api.v1.users.crud_users") as mock_crud:
-            mock_crud.exists = AsyncMock(return_value=False)
-            mock_crud.create = AsyncMock(return_value=Mock(id=1))
-            
-            result = await write_user(Mock(), sample_user_data, mock_db)
-            
-            assert result.id == 1
-            mock_crud.create.assert_called_once()
-```
-
-### 7.2 Running Tests
-
-Run all unit tests:
-
-```sh
-uv run pytest
-```
-
-Run specific test file:
-
-```sh
-uv run pytest tests/test_user_unit.py
-```
-
-Run specific test file:
-
-```sh
-uv run pytest tests/test_user_unit.py
-```
-
-Run with verbose output:
-
-```sh
-uv run pytest -v
-```
-
-Run specific test:
-
-```sh
-uv run pytest tests/test_user_unit.py::TestWriteUser::test_create_user_success
-```
-
-### 7.3 Test Configuration
-
-Tests are configured in `pyproject.toml`:
-
-```toml
-[tool.pytest.ini_options]
-filterwarnings = [
-    "ignore::PendingDeprecationWarning:starlette.formparsers",
-]
-```
-
-### 7.4 Test Structure
-
-- **Unit Tests** (`test_*_unit.py`): Fast, isolated tests with mocked dependencies
-- **Fixtures** (`conftest.py`): Shared test fixtures and mock setups  
-- **Helpers** (`tests/helpers/`): Utilities for generating test data and mocks
-
-### 7.5 Benefits of Our Approach
-
-✅ **Fast**: Tests run in ~0.04 seconds  
-✅ **Reliable**: No external dependencies required  
-✅ **Isolated**: Each test focuses on one piece of functionality  
-✅ **Maintainable**: Easy to understand and modify  
-✅ **CI/CD Ready**: Run anywhere without infrastructure setup
-
-## 8. Contributing
-
-Read [contributing](CONTRIBUTING.md).
-
-## 9. References
-
-This project was inspired by a few projects, it's based on them with things changed to the way I like (and pydantic, sqlalchemy updated)
-
-- [`Full Stack FastAPI and PostgreSQL`](https://github.com/tiangolo/full-stack-fastapi-postgresql) by @tiangolo himself
-- [`FastAPI Microservices`](https://github.com/Kludex/fastapi-microservices) by @kludex which heavily inspired this boilerplate
-- [`Async Web API with FastAPI + SQLAlchemy 2.0`](https://github.com/rhoboro/async-fastapi-sqlalchemy) for sqlalchemy 2.0 ORM examples
-- [`FastaAPI Rocket Boilerplate`](https://github.com/asacristani/fastapi-rocket-boilerplate/tree/main) for docker compose
-
-## 10. License
-
-[`MIT`](LICENSE.md)
-
-## 11. Contact
-
-Benav Labs – [benav.io](https://benav.io)
-[github.com/benavlabs](https://github.com/benavlabs/)
-
-<hr>
-<a href="https://benav.io">
-  <img src="https://github.com/benavlabs/fastcrud/raw/main/docs/assets/benav_labs_banner.png" alt="Powered by Benav Labs - benav.io"/>
-</a>
