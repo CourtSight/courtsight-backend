@@ -64,7 +64,7 @@
 
 ## 🏗️ Arsitektur Sistem
 
-### Tech Stack
+### 📊 Tech Stack Overview
 
 | Kategori            | Teknologi                       | Tujuan                                           |
 | ------------------- | ------------------------------- | ------------------------------------------------ |
@@ -74,26 +74,27 @@
 | **Search Engine**   | Supabase Vector Functions       | Optimized similarity search dengan HNSW indexing |
 | **Task Processing** | Document Processor + Scheduler  | Automated document ingestion pipeline            |
 | **Authentication**  | JWT + Optional Auth             | Secure API access dengan public endpoints        |
+
 ### 🏗️ Layered Architecture Visualization
 
 ```mermaid
 graph TB
-    subgraph "Presentation Layer"
+    subgraph "🎯 Presentation Layer"
         A[FastAPI Routes] --> B[Request Validation]
         B --> C[Response Serialization]
     end
     
-    subgraph "Service Layer"
+    subgraph "🧠 Service Layer"
         D[Business Logic] --> E[Workflow Orchestration]
         E --> F[Transaction Management]
     end
     
-    subgraph "Repository Layer"
+    subgraph "📊 Repository Layer"
         G[CRUD Operations] --> H[Database Queries]
         H --> I[External API Calls]
     end
     
-    subgraph "Domain Layer"
+    subgraph "🏛️ Domain Layer"
         J[Legal Document Models] --> K[Business Rules]
         K --> L[Data Validation]
     end
@@ -108,49 +109,144 @@ graph TB
     style J fill:#fff3e0
 ```
 
-#### Layer Dependencies Flow
+#### 🔄 Layer Dependencies & Data Flow
 - **Presentation** → **Service** → **Repository** → **Domain**
 - Each layer depends only on the layer below it
 - Cross-layer dependencies are handled through interfaces
 - Domain layer has no external dependencies
 
-#### Architecture Benefits
-- ✅ **Separation of Concerns**: Each layer has distinct responsibilities
-- ✅ **Testability**: Easy to unit test individual layers
-- ✅ **Maintainability**: Changes in one layer don't affect others
-- ✅ **Scalability**: Can scale individual components independently
-- ✅ **Flexibility**: Easy to swap implementations without affecting business logic                                       ┌─────────────────┐       ┌─────────────────┐
-                                        │   Web Frontend  │ ─────>│  API Gateway    │
-                                        │   (Next.js)     │◄──────┤  (FastAPI)      │
-                                        └─────────────────┘       └─────────────────┘
-                                                                            │
-                                                  ┌─────────────────────────┼─────────────────────────┐
-                                                  │                         │                         │
-                                        ┌─────────▼──────────┐    ┌─────────▼──────────┐    ┌─────────▼──────────┐
-                                        │ Search Orchestrator│    │ Document Processor │    │  LLM Services     │
-                                        │ (Business Logic)   │    │  (Bulk Ingestion)  │    │  (AI Analysis)    │
-                                        └─────────┬──────────┘    └─────────┬──────────┘    └─────────┬──────────┘
-                                                  │                         │                         │
-                                                  │         ┌───────────────┼─────────────────────────┼─────┐
-                                                  │         │               │                         │     │
-                                        ┌─────────▼─────────▼┐    ┌─────────▼──────────┐    ┌─────────▼─────▼────┐
-                                        │  Vector Database   │    │  Document Store    │    │  Embedding Service │
-                                        │  (pgvector)        │    │  (PostgreSQL)      │    │  (Text → Vector)   │
-                                        └─────────┬──────────┘    └─────────┬──────────┘    └─────────┬──────────┘
-                                                  │                         │                         │
-                                                  └─────────────────────────┼─────────────────────────┘
-                                                                            │
-                                                  ┌─────────────────────────┼─────────────────────────┐
-                                                  │                         │                         │
-                                        ┌─────────▼──────────┐    ┌─────────▼──────────┐    ┌─────────▼──────────┐
-                                        │   Chatbot AI       │    │  Voice Assistant   │    │   RAG Pipeline     │
-                                        │  (Q&A Hukum)       │    │  (Audio Analysis)  │    │ (Context Retrieval)│
-                                        │  *Coming Soon*     │    │  *Coming Soon*     │    │  *Coming Soon*     │
-                                        └────────────────────┘    └────────────────────┘    └────────────────────┘
-                    ```
+#### ✅ Architecture Benefits
+- **Separation of Concerns**: Each layer has distinct responsibilities
+- **Testability**: Easy to unit test individual layers
+- **Maintainability**: Changes in one layer don't affect others
+- **Scalability**: Can scale individual components independently
+- **Flexibility**: Easy to swap implementations without affecting business logic
+
+### 🏛️ System Architecture Diagram
+
+```mermaid
+graph TB
+    subgraph "Client Layer"
+        WEB[🌐 Web Frontend<br/>Next.js]
+        API_CLIENT[📱 API Client<br/>Mobile/Desktop]
+    end
+    
+    subgraph "API Gateway Layer"
+        GATEWAY[🚪 API Gateway<br/>FastAPI Router]
+        AUTH[🔐 Authentication<br/>JWT Middleware]
+        RATE[⏱️ Rate Limiter<br/>Redis]
+    end
+    
+    subgraph "Business Logic Layer"
+        SEARCH[🔍 Search Orchestrator<br/>Semantic Search]
+        PROCESSOR[📄 Document Processor<br/>Bulk Ingestion]
+        LLM[🤖 LLM Services<br/>AI Analysis]
+    end
+    
+    subgraph "Data Layer"
+        VECTOR_DB[🧮 Vector Database<br/>pgvector]
+        DOC_STORE[📚 Document Store<br/>PostgreSQL]
+        EMBED[🔤 Embedding Service<br/>Text → Vector]
+        CACHE[⚡ Cache Layer<br/>Redis]
+    end
+    
+    subgraph "Future Services"
+        CHATBOT[💬 Chatbot AI<br/>Q&A Hukum<br/>Coming Soon]
+        VOICE[🎤 Voice Assistant<br/>Audio Analysis<br/>Coming Soon]
+        RAG[🧠 RAG Pipeline<br/>Context Retrieval<br/>Coming Soon]
+    end
+    
+    %% Client connections
+    WEB --> GATEWAY
+    API_CLIENT --> GATEWAY
+    
+    %% Gateway processing
+    GATEWAY --> AUTH
+    AUTH --> RATE
+    RATE --> SEARCH
+    RATE --> PROCESSOR
+    RATE --> LLM
+    
+    %% Business logic to data
+    SEARCH --> VECTOR_DB
+    SEARCH --> DOC_STORE
+    SEARCH --> EMBED
+    PROCESSOR --> DOC_STORE
+    PROCESSOR --> EMBED
+    LLM --> VECTOR_DB
+    LLM --> CACHE
+    
+    %% Data layer connections
+    VECTOR_DB -.-> DOC_STORE
+    EMBED --> VECTOR_DB
+    
+    %% Future connections (dotted)
+    CHATBOT -.-> SEARCH
+    VOICE -.-> LLM
+    RAG -.-> VECTOR_DB
+    
+    %% Styling
+    classDef clientLayer fill:#e3f2fd
+    classDef gatewayLayer fill:#f3e5f5
+    classDef businessLayer fill:#e8f5e8
+    classDef dataLayer fill:#fff3e0
+    classDef futureLayer fill:#fafafa,stroke-dasharray: 5 5
+    
+    class WEB,API_CLIENT clientLayer
+    class GATEWAY,AUTH,RATE gatewayLayer
+    class SEARCH,PROCESSOR,LLM businessLayer
+    class VECTOR_DB,DOC_STORE,EMBED,CACHE dataLayer
+    class CHATBOT,VOICE,RAG futureLayer
 ```
 
----
+### 🔍 Component Details
+
+#### **Presentation Layer (API Gateway)**
+- **FastAPI Routes**: RESTful endpoints for legal document operations
+- **Request Validation**: Pydantic schemas for input validation
+- **Response Serialization**: Consistent JSON response formatting
+- **Authentication Middleware**: JWT token validation
+- **Rate Limiting**: Redis-based request throttling
+
+#### **Service Layer (Business Logic)**
+- **Search Orchestrator**: Coordinates semantic search operations
+- **Document Processor**: Handles bulk document ingestion and processing
+- **LLM Services**: Manages AI-powered analysis and summarization
+- **Workflow Orchestration**: Manages complex business processes
+- **Transaction Management**: Ensures data consistency
+
+#### **Repository Layer (Data Access)**
+- **CRUD Operations**: Database interaction through FastCRUD
+- **Vector Search**: pgvector similarity queries
+- **External APIs**: Integration with Mahkamah Agung website
+- **Cache Management**: Redis-based caching strategies
+
+#### **Domain Layer (Core Models)**
+- **Legal Document Models**: SQLAlchemy ORM models
+- **Business Rules**: Domain-specific validation logic
+- **Data Schemas**: Pydantic models for type safety
+- **Value Objects**: Immutable domain concepts
+
+
+### 📈 Scalability & Performance
+
+#### **Horizontal Scaling Points**
+- **API Instances**: Multiple FastAPI containers behind load balancer
+- **Worker Processes**: Distributed document processing with ARQ
+- **Database Read Replicas**: PostgreSQL streaming replication
+- **Cache Sharding**: Redis cluster for distributed caching
+
+#### **Performance Optimizations**
+- **Vector Indexing**: HNSW indexes for fast similarity search
+- **Query Optimization**: Prepared statements and connection pooling
+- **Async Processing**: Non-blocking I/O throughout the stack
+- **Caching Strategy**: Multi-level caching (Redis + client-side)
+
+#### **Monitoring & Observability**
+- **Health Checks**: Automated service health monitoring
+- **Metrics Collection**: API response times and database performance
+- **Error Tracking**: Centralized logging and error reporting
+- **Usage Analytics**: Search patterns and user behavior tracking
 
 ## 📋 Daftar Isi
 
