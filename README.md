@@ -4,12 +4,6 @@
 </p>
 
 <p align="center">
-  <a href="https://benavlabs.github.io/FastAPI-boilerplate">
-    <img src="docs/assets/FastAPI-boilerplate.png" alt="CourtSight AI Legal Intelligence Platform" width="35%" height="auto">
-  </a>
-</p>
-
-<p align="center">
   <a href="">
       <img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python">
   </a>
@@ -56,7 +50,7 @@
    - Analisis dan ringkasan otomatis menggunakan LLM
    - Validasi sitasi dan referensi hukum
 
-2. **🤖 Chatbot AI untuk Hukum**
+2. **🤖 Chatbot AI untuk Hukum** *(Coming Soon)*
    - Interaksi percakapan untuk Q&A hukum
    - Analisis kontekstual berbasis RAG (Retrieval-Augmented Generation)
    - Integrasi dengan database putusan pengadilan
@@ -66,47 +60,94 @@
    - Analisis percakapan dan ekstraksi poin-poin kunci
    - Integrasi dengan basis data hukum
 
-4. **📄 Document Processing Pipeline**
-   - Bulk ingestion dari putusan3.mahkamahagung.go.id
-   - Automated daily processing dengan task scheduler
-   - Content extraction dan vectorization
-   - Deduplication dan quality control
-
 ---
 
 ## 🏗️ Arsitektur Sistem
 
 ### Tech Stack
 
-| Kategori | Teknologi | Tujuan |
-|----------|-----------|---------|
-| **Backend API** | FastAPI + SQLAlchemy 2.0 | RESTful API dengan async support |
-| **Database** | PostgreSQL + pgvector | Relational data + Vector similarity search |
-| **AI/ML Services** | Embedding Service + LLM Service | Text vectorization + Natural language processing |
-| **Search Engine** | Supabase Vector Functions | Optimized similarity search dengan HNSW indexing |
-| **Task Processing** | Document Processor + Scheduler | Automated document ingestion pipeline |
-| **Authentication** | JWT + Optional Auth | Secure API access dengan public endpoints |
-| **Deployment** | Docker + Docker Compose | Containerized deployment |
+| Kategori            | Teknologi                       | Tujuan                                           |
+| ------------------- | ------------------------------- | ------------------------------------------------ |
+| **Backend API**     | FastAPI + SQLAlchemy 2.0        | RESTful API dengan async support                 |
+| **Database**        | PostgreSQL + pgvector           | Relational data + Vector similarity search       |
+| **AI/ML Services**  | Embedding Service + LLM Service | Text vectorization + Natural language processing |
+| **Search Engine**   | Supabase Vector Functions       | Optimized similarity search dengan HNSW indexing |
+| **Task Processing** | Document Processor + Scheduler  | Automated document ingestion pipeline            |
+| **Authentication**  | JWT + Optional Auth             | Secure API access dengan public endpoints        |
+### 🏗️ Layered Architecture Visualization
 
-### Arsitektur Microservices
-
+```mermaid
+graph TB
+    subgraph "Presentation Layer"
+        A[FastAPI Routes] --> B[Request Validation]
+        B --> C[Response Serialization]
+    end
+    
+    subgraph "Service Layer"
+        D[Business Logic] --> E[Workflow Orchestration]
+        E --> F[Transaction Management]
+    end
+    
+    subgraph "Repository Layer"
+        G[CRUD Operations] --> H[Database Queries]
+        H --> I[External API Calls]
+    end
+    
+    subgraph "Domain Layer"
+        J[Legal Document Models] --> K[Business Rules]
+        K --> L[Data Validation]
+    end
+    
+    A --> D
+    D --> G
+    G --> J
+    
+    style A fill:#e1f5fe
+    style D fill:#f3e5f5
+    style G fill:#e8f5e8
+    style J fill:#fff3e0
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Web Frontend  │    │  Mobile App     │    │  API Gateway    │
-│   (Next.js)     │◄───┤  (Voice)        │◄───┤  (FastAPI)      │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-                                                        │
-                              ┌─────────────────────────┼─────────────────────────┐
-                              │                         │                         │
-                    ┌─────────▼──────────┐    ┌─────────▼──────────┐    ┌─────────▼──────────┐
-                    │  Search Orchestrator│    │ Document Processor │    │  LLM Services     │
-                    │  (Business Logic)   │    │  (Bulk Ingestion)  │    │  (AI Analysis)    │
-                    └─────────┬──────────┘    └─────────┬──────────┘    └─────────┬──────────┘
-                              │                         │                         │
-                    ┌─────────▼──────────┐    ┌─────────▼──────────┐    ┌─────────▼──────────┐
-                    │  Vector Database   │    │  Document Store    │    │  Embedding Service │
-                    │  (pgvector)        │    │  (PostgreSQL)      │    │  (Text → Vector)   │
-                    └────────────────────┘    └────────────────────┘    └────────────────────┘
+
+#### Layer Dependencies Flow
+- **Presentation** → **Service** → **Repository** → **Domain**
+- Each layer depends only on the layer below it
+- Cross-layer dependencies are handled through interfaces
+- Domain layer has no external dependencies
+
+#### Architecture Benefits
+- ✅ **Separation of Concerns**: Each layer has distinct responsibilities
+- ✅ **Testability**: Easy to unit test individual layers
+- ✅ **Maintainability**: Changes in one layer don't affect others
+- ✅ **Scalability**: Can scale individual components independently
+- ✅ **Flexibility**: Easy to swap implementations without affecting business logic                                       ┌─────────────────┐       ┌─────────────────┐
+                                        │   Web Frontend  │ ─────>│  API Gateway    │
+                                        │   (Next.js)     │◄──────┤  (FastAPI)      │
+                                        └─────────────────┘       └─────────────────┘
+                                                                            │
+                                                  ┌─────────────────────────┼─────────────────────────┐
+                                                  │                         │                         │
+                                        ┌─────────▼──────────┐    ┌─────────▼──────────┐    ┌─────────▼──────────┐
+                                        │ Search Orchestrator│    │ Document Processor │    │  LLM Services     │
+                                        │ (Business Logic)   │    │  (Bulk Ingestion)  │    │  (AI Analysis)    │
+                                        └─────────┬──────────┘    └─────────┬──────────┘    └─────────┬──────────┘
+                                                  │                         │                         │
+                                                  │         ┌───────────────┼─────────────────────────┼─────┐
+                                                  │         │               │                         │     │
+                                        ┌─────────▼─────────▼┐    ┌─────────▼──────────┐    ┌─────────▼─────▼────┐
+                                        │  Vector Database   │    │  Document Store    │    │  Embedding Service │
+                                        │  (pgvector)        │    │  (PostgreSQL)      │    │  (Text → Vector)   │
+                                        └─────────┬──────────┘    └─────────┬──────────┘    └─────────┬──────────┘
+                                                  │                         │                         │
+                                                  └─────────────────────────┼─────────────────────────┘
+                                                                            │
+                                                  ┌─────────────────────────┼─────────────────────────┐
+                                                  │                         │                         │
+                                        ┌─────────▼──────────┐    ┌─────────▼──────────┐    ┌─────────▼──────────┐
+                                        │   Chatbot AI       │    │  Voice Assistant   │    │   RAG Pipeline     │
+                                        │  (Q&A Hukum)       │    │  (Audio Analysis)  │    │ (Context Retrieval)│
+                                        │  *Coming Soon*     │    │  *Coming Soon*     │    │  *Coming Soon*     │
+                                        └────────────────────┘    └────────────────────┘    └────────────────────┘
+                    ```
 ```
 
 ---
@@ -487,7 +528,699 @@ asyncio.run(create_sample())
 curl http://localhost:8000/api/v1/legal-search/documents
 ```
 
-## 6. Extending
+---
+
+## 📚 Dokumentasi API
+
+### 7.1 Interactive API Documentation
+
+CourtSight menyediakan dokumentasi API interaktif yang dapat diakses melalui beberapa interface:
+
+#### Swagger UI (Recommended)
+- **URL:** http://localhost:8000/docs
+- **Features:** Interactive testing, parameter validation, response examples
+- **Best for:** Development and testing API endpoints
+
+#### ReDoc
+- **URL:** http://localhost:8000/redoc  
+- **Features:** Clean documentation layout, detailed schemas
+- **Best for:** API reference and documentation reading
+
+### 7.2 Core API Endpoints
+
+#### Health Check
+```bash
+GET /health
+# Response: {"status": "healthy", "timestamp": "2024-XX-XX..."}
+```
+
+#### Legal Search API
+```bash
+# Get search statistics
+GET /api/v1/legal-search/stats
+
+# Search legal documents (semantic search)
+POST /api/v1/legal-search/search
+Content-Type: application/json
+{
+    "query": "putusan perceraian dengan anak",
+    "limit": 10,
+    "similarity_threshold": 0.7
+}
+
+# Get all documents (paginated)
+GET /api/v1/legal-search/documents?page=1&items_per_page=10
+
+# Get document by ID
+GET /api/v1/legal-search/documents/{document_id}
+```
+
+#### Document Processing API
+```bash
+# Get processing status
+GET /api/v1/document-processing/status
+
+# Start bulk document processing (Admin only)
+POST /api/v1/document-processing/start-bulk
+Authorization: Bearer <admin-token>
+
+# Stop processing (Admin only)  
+POST /api/v1/document-processing/stop
+Authorization: Bearer <admin-token>
+```
+
+#### Authentication API
+```bash
+# Login
+POST /api/v1/login
+Content-Type: application/json
+{
+    "username": "your_username",
+    "password": "your_password"
+}
+
+# Refresh token
+POST /api/v1/refresh
+
+# Logout
+POST /api/v1/logout
+Authorization: Bearer <your-token>
+```
+
+### 7.3 API Response Formats
+
+#### Standard Response Structure
+```json
+{
+    "data": [...],
+    "total_count": 100,
+    "has_more": true,
+    "page": 1,
+    "items_per_page": 10
+}
+```
+
+#### Error Response Structure
+```json
+{
+    "detail": "Error message",
+    "error_code": "VALIDATION_ERROR",
+    "timestamp": "2024-XX-XXTXX:XX:XX"
+}
+```
+
+### 7.4 Authentication & Authorization
+
+#### JWT Token Usage
+```bash
+# Include token in request headers
+Authorization: Bearer <your-access-token>
+```
+
+#### Token Expiration
+- **Access Token:** 30 minutes (default)
+- **Refresh Token:** 7 days (default)
+
+---
+
+## 🔧 Konfigurasi Development
+
+### 8.1 Development Environment Setup
+
+#### Prerequisites for Development
+```bash
+# Install development dependencies
+pip install -r requirements-dev.txt
+
+# Or with uv (recommended)
+uv sync --dev
+```
+
+#### Enable Development Mode
+```bash
+# In .env file
+ENVIRONMENT=development
+DEBUG=true
+
+# Enable auto-reload for FastAPI
+uvicorn src.app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+### 8.2 Code Quality Tools
+
+#### Pre-commit Hooks
+```bash
+# Install pre-commit
+uv add --dev pre-commit
+
+# Setup pre-commit hooks
+pre-commit install
+
+# Run manually
+pre-commit run --all-files
+```
+
+#### Code Formatting & Linting
+```bash
+# Format code with black
+black src/
+
+# Sort imports with isort
+isort src/
+
+# Lint with flake8
+flake8 src/
+
+# Type checking with mypy
+mypy src/
+```
+
+### 8.3 Testing Setup
+
+#### Run Tests
+```bash
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=src/app --cov-report=html
+
+# Run specific test file
+pytest tests/test_legal_search.py
+
+# Run with verbose output
+pytest -v
+```
+
+#### Test Database
+```bash
+# Tests use separate test database
+POSTGRES_DB_TEST=courtsight_test_db
+```
+
+### 8.4 Database Development
+
+#### Alembic Migrations
+```bash
+# Create new migration
+alembic revision --autogenerate -m "Add new table"
+
+# Apply migrations
+alembic upgrade head
+
+# Rollback migration
+alembic downgrade -1
+
+# View migration history
+alembic history
+```
+
+#### Database Reset (Development)
+```bash
+# Reset database with fresh data
+docker compose down -v
+docker compose up --build
+```
+
+### 8.5 AI Service Development
+
+#### Local Embedding Service
+```bash
+# Use local sentence-transformers for development
+EMBEDDING_MODEL=all-MiniLM-L6-v2
+EMBEDDING_DIMENSION=384
+
+# Mock LLM service for testing
+LLM_PROVIDER=mock
+LLM_MODEL=mock-gpt
+```
+
+#### Vector Database Testing
+```bash
+# Test pgvector functionality
+docker compose exec db psql -U courtsight_user -d courtsight_db
+
+-- Test vector operations
+SELECT id, title, embedding <-> '[1,2,3,...]' as similarity 
+FROM legal_document 
+ORDER BY similarity 
+LIMIT 5;
+```
+
+---
+
+## 📊 Monitoring & Statistics
+
+### 9.1 Application Metrics
+
+#### System Health Monitoring
+```bash
+# Check system health
+curl http://localhost:8000/health
+
+# Database connection status
+curl http://localhost:8000/api/v1/legal-search/stats
+```
+
+#### Performance Metrics
+- **Response Time:** Average API response time
+- **Database Queries:** Query execution time and frequency  
+- **Vector Search:** Similarity search performance
+- **Memory Usage:** Application memory consumption
+
+### 9.2 Database Statistics
+
+#### Document Processing Stats
+```bash
+# Get total documents processed
+GET /api/v1/legal-search/stats
+
+# Response example:
+{
+    "total_statistics": {
+        "total_documents": 15420,
+        "total_embedding_vectors": 15420,
+        "average_similarity_score": 0.82,
+        "last_updated": "2024-XX-XX",
+        "processing_status": "active"
+    }
+}
+```
+
+#### Performance Monitoring
+```sql
+-- Monitor database performance
+SELECT 
+    schemaname,
+    tablename,
+    attname,
+    n_distinct,
+    correlation
+FROM pg_stats 
+WHERE tablename = 'legal_document';
+
+-- Check index usage
+SELECT 
+    indexrelname,
+    idx_scan,
+    idx_tup_read,
+    idx_tup_fetch
+FROM pg_stat_user_indexes 
+WHERE schemaname = 'public';
+```
+
+### 9.3 Logging & Monitoring
+
+#### Application Logs
+```bash
+# View application logs
+docker compose logs web -f
+
+# View specific service logs
+docker compose logs db -f
+docker compose logs redis -f
+```
+
+#### Log Levels
+- **INFO:** General application events
+- **WARNING:** Potential issues or deprecated usage
+- **ERROR:** Application errors and exceptions
+- **DEBUG:** Detailed debugging information (development only)
+
+### 9.4 Redis Monitoring
+
+#### Cache Performance
+```bash
+# Redis CLI access
+docker compose exec redis redis-cli
+
+# Monitor cache hit/miss ratio
+INFO stats
+
+# View cache keys
+KEYS *legal_search*
+
+# Monitor memory usage
+INFO memory
+```
+
+#### Queue Monitoring
+```bash
+# Check background job queue
+LLEN arq:queue:default
+
+# View failed jobs
+LLEN arq:queue:failed
+```
+
+---
+
+## 🔧 Troubleshooting
+
+### 10.1 Common Issues
+
+#### Database Connection Issues
+```bash
+# Error: "connection to server on socket failed"
+# Solution: Check if PostgreSQL is running
+docker compose ps db
+
+# Restart database service
+docker compose restart db
+
+# Check database logs
+docker compose logs db
+```
+
+#### Migration Issues
+```bash
+# Error: "relation already exists"
+# Solution: Reset Alembic version table
+docker compose exec db psql -U courtsight_user -d courtsight_db
+DROP TABLE IF EXISTS alembic_version;
+
+# Re-run migrations
+alembic upgrade head
+```
+
+#### Vector Search Issues
+```bash
+# Error: "vector extension not found"
+# Solution: Install pgvector extension
+docker compose exec db psql -U courtsight_user -d courtsight_db
+CREATE EXTENSION IF NOT EXISTS vector;
+```
+
+### 10.2 Performance Issues
+
+#### Slow API Responses
+```bash
+# Check database query performance
+# Enable query logging in PostgreSQL
+echo "log_statement = 'all'" >> postgresql.conf
+echo "log_duration = on" >> postgresql.conf
+
+# Restart database
+docker compose restart db
+```
+
+#### Memory Issues
+```bash
+# Monitor memory usage
+docker stats
+
+# Optimize vector dimensions
+# Reduce EMBEDDING_DIMENSION in .env if needed
+EMBEDDING_DIMENSION=256  # Instead of 384
+```
+
+#### Redis Connection Issues
+```bash
+# Check Redis connectivity
+docker compose exec redis redis-cli ping
+
+# Clear Redis cache if corrupted
+docker compose exec redis redis-cli FLUSHALL
+```
+
+### 10.3 Development Issues
+
+#### Import Errors
+```bash
+# Error: "ModuleNotFoundError"
+# Solution: Ensure PYTHONPATH is set correctly
+export PYTHONPATH="${PYTHONPATH}:${PWD}/src"
+
+# Or run from src directory
+cd src
+python -m app.main
+```
+
+#### Environment Variable Issues
+```bash
+# Error: "Settings validation error"
+# Solution: Check .env file format
+# Ensure no spaces around = in .env
+
+# Verify environment loading
+python -c "from app.core.config import settings; print(settings.DATABASE_URL)"
+```
+
+### 10.4 Production Deployment Issues
+
+#### Docker Build Issues
+```bash
+# Error: "failed to solve with frontend dockerfile.v0"
+# Solution: Clear Docker cache
+docker system prune -a
+
+# Rebuild with no cache
+docker compose build --no-cache
+```
+
+#### SSL/HTTPS Issues
+```bash
+# For production deployment
+# Ensure SSL certificates are properly configured
+# Update nginx configuration for HTTPS
+# Set secure cookie flags in production
+```
+
+### 10.5 Getting Help
+
+#### Debug Mode
+```bash
+# Enable debug mode in .env
+DEBUG=true
+LOG_LEVEL=DEBUG
+
+# View detailed error traces
+docker compose logs web -f
+```
+
+#### Health Checks
+```bash
+# Comprehensive system check
+curl -v http://localhost:8000/health
+
+# Check each service individually
+curl http://localhost:8000/api/v1/legal-search/stats
+curl http://localhost:8000/api/v1/document-processing/status
+```
+
+---
+
+## 🤝 Contributing
+
+### 11.1 Development Workflow
+
+#### Getting Started
+```bash
+# Fork the repository
+git clone https://github.com/your-username/courtsight.git
+cd courtsight
+
+# Create feature branch
+git checkout -b feature/your-feature-name
+
+# Install development dependencies
+uv sync --dev
+
+# Setup pre-commit hooks
+pre-commit install
+```
+
+#### Code Standards
+- **Python Style:** Follow PEP 8 guidelines
+- **Code Formatting:** Use Black for code formatting
+- **Import Sorting:** Use isort for import organization
+- **Type Hints:** Use type hints for all functions
+- **Documentation:** Add docstrings for public methods
+
+#### Commit Guidelines
+```bash
+# Use conventional commits format
+feat: add semantic search functionality
+fix: resolve database connection timeout
+docs: update API documentation
+test: add unit tests for legal search
+
+# Examples of good commit messages
+git commit -m "feat(search): implement vector similarity search"
+git commit -m "fix(database): handle connection timeout gracefully"
+git commit -m "docs(readme): update installation instructions"
+```
+
+### 11.2 Pull Request Process
+
+#### Before Submitting
+```bash
+# Run code quality checks
+black src/
+isort src/
+flake8 src/
+mypy src/
+
+# Run tests
+pytest --cov=src/app
+
+# Update documentation if needed
+# Test your changes thoroughly
+```
+
+#### PR Requirements
+- [ ] Code follows project style guidelines
+- [ ] Tests are added for new functionality
+- [ ] Documentation is updated
+- [ ] All tests pass
+- [ ] No breaking changes (or clearly documented)
+- [ ] Commit messages follow conventional format
+
+### 11.3 Areas for Contribution
+
+#### High Priority
+- **AI/ML Features:** Improve LLM integration and responses
+- **Search Optimization:** Enhance vector search algorithms
+- **Performance:** Database query optimization
+- **Documentation:** API documentation and tutorials
+- **Testing:** Increase test coverage
+
+#### Feature Requests
+- **Multi-language Support:** Indonesian, English, local languages
+- **Advanced Filters:** Date range, court type, case category
+- **Export Features:** PDF generation, citation export
+- **API Rate Limiting:** Advanced tier management
+- **Monitoring:** Performance metrics and analytics
+
+### 11.4 Bug Reports
+
+#### Issue Template
+```markdown
+**Bug Description**
+Clear description of the bug
+
+**Steps to Reproduce**
+1. Step one
+2. Step two
+3. Step three
+
+**Expected Behavior**
+What you expected to happen
+
+**Actual Behavior**
+What actually happened
+
+**Environment**
+- OS: [e.g., Ubuntu 22.04]
+- Docker Version: [e.g., 20.10.17]
+- Python Version: [e.g., 3.11.5]
+
+**Additional Context**
+Any additional information
+```
+
+### 11.5 Security
+
+#### Reporting Security Issues
+- **Do not** create public issues for security vulnerabilities
+- Email security issues to: security@courtsight.ai
+- Include detailed description and reproduction steps
+- We will respond within 48 hours
+
+#### Security Best Practices
+- Keep dependencies updated
+- Use environment variables for secrets
+- Validate all user inputs
+- Implement proper authentication
+- Follow OWASP guidelines
+
+---
+
+## 📄 License
+
+### 12.1 MIT License
+
+```
+MIT License
+
+Copyright (c) 2024 CourtSight Team
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+### 12.2 Third-Party Licenses
+
+#### Dependencies
+- **FastAPI:** MIT License
+- **PostgreSQL:** PostgreSQL License
+- **Redis:** BSD License
+- **pgvector:** PostgreSQL License
+- **Pydantic:** MIT License
+- **SQLAlchemy:** MIT License
+
+#### AI Models
+- **Sentence Transformers:** Apache 2.0 License
+- **LLM Services:** Respective provider terms apply
+
+### 12.3 Data Usage
+
+#### Legal Documents
+- Supreme Court decisions are public domain
+- CourtSight processes public legal information
+- No personal data is stored without consent
+- Complies with Indonesian data protection laws
+
+#### Privacy Policy
+- We collect minimal necessary data
+- No personal information in document content
+- Secure data transmission and storage
+- User data rights are respected
+
+### 12.4 Commercial Use
+
+#### Permitted Uses
+- ✅ Commercial applications and products
+- ✅ Integration into existing systems
+- ✅ Modification and redistribution
+- ✅ Private and commercial hosting
+
+#### Attribution
+While not required by MIT license, attribution is appreciated:
+```
+Powered by CourtSight - AI Legal Intelligence Platform
+https://github.com/yourusername/courtsight
+```
+
+---
+
+<p align="center">
+    <strong>🏛️ CourtSight - Democratizing Legal Intelligence with AI</strong>
+</p>
+
+<p align="center">
+    <a href="https://github.com/yourusername/courtsight">GitHub</a> •
+    <a href="mailto:support@courtsight.ai">Support</a> •
+    <a href="http://localhost:8000/docs">API Docs</a> •
+    <a href="#-contributing">Contributing</a>
+</p>
+
+## 6. Boilerplate Extending
 
 > 📖 **[See comprehensive development guide in our docs](https://benavlabs.github.io/FastAPI-boilerplate/user-guide/development/)**
 
