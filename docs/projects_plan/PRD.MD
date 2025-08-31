@@ -105,7 +105,7 @@ Pengguna CourtSight memiliki tingkat keahlian teknis yang bervariasi. Pengacara 
 Sistem CourtSight akan mengadopsi arsitektur berbasis layanan mikro (*microservices*).
 1.  **Frontend:** Aplikasi web `Next.js` berfungsi sebagai titik masuk utama bagi pengguna untuk fitur pencarian dan chatbot. Aplikasi seluler akan dikembangkan untuk fitur Asisten Suara.
 2.  **Backend (API Gateway):** Sebuah `FastAPI` akan berfungsi sebagai *gateway* utama, menerima permintaan dari frontend dan mengorkestrasikannya ke layanan-layanan di bawahnya.
-3.  **Orkestrator AI:** `LangGraph` akan digunakan untuk mengelola alur kerja yang kompleks, terutama untuk agen AI pada fitur chatbot dan asisten suara.
+3.  **Orkestrator AI:** `LangGraph`/`Langchain` akan digunakan untuk mengelola alur kerja yang kompleks, terutama untuk agen AI pada fitur chatbot dan asisten suara.
 4.  **Layanan Khusus:**
     * **Embedding Service:** Layanan terpisah untuk mengubah teks menjadi vektor.
     * **LLM Service:** Wrapper untuk berinteraksi dengan berbagai model LLM.

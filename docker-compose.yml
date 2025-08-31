@@ -11,8 +11,9 @@ services:
     depends_on:
       - redis
     volumes:
+      # Mount source code for development with hot reload
       - ./src/app:/code/app
-      - ./src/.env:/code/.env
+      - ./src/.env:/code/.env  # Sync .env changes in real-time
       - ./src/alembic.ini:/code/alembic.ini
       - ./src/migrations:/code/migrations
 
@@ -26,8 +27,9 @@ services:
     depends_on:
       - redis
     volumes:
+      # Mount source code for background worker
       - ./src/app:/code/app
-      - ./src/.env:/code/.env
+      - ./src/.env:/code/.env  # Sync .env changes in real-time
       - ./src/alembic.ini:/code/alembic.ini
       - ./src/migrations:/code/migrations
 
@@ -37,30 +39,6 @@ services:
       - redis-data:/data
     expose:
       - "6379"
-
-  create_superuser:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    env_file:
-      - ./src/.env
-    depends_on:
-      - web
-    command: python -m src.scripts.create_first_superuser
-    volumes:
-      - ./src:/code/src
-
-  create_tier:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    env_file:
-      - ./src/.env
-    depends_on:
-      - web
-    command: python -m src.scripts.create_first_tier
-    volumes:
-      - ./src:/code/src
 
 volumes:
   redis-data:

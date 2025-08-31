@@ -2,10 +2,9 @@
 name = "fastapi-boilerplate"
 version = "0.1.0"
 description = "A fully Async FastAPI boilerplate using SQLAlchemy and Pydantic 2"
-authors = [{ name = "Igor Magalhaes", email = "igor.magalhaes.r@gmail.com" }]
 license = { text = "MIT" }
 readme = "README.md"
-requires-python = "~=3.11"
+requires-python = "~=3.11.0"
 dependencies = [
     "python-dotenv>=1.0.0",
     "pydantic[email]>=2.6.1",
@@ -32,8 +31,16 @@ dependencies = [
     "gunicorn>=23.0.0",
     "ruff>=0.11.13",
     "mypy>=1.16.0",
-    "pgvector>=0.4.1",
     "aiohttp>=3.9.0",
+    "langchain-community>=0.3.29",
+    "pypdf>=6.0.0",
+    "uv==0.8.14",
+    "langgraph>=0.6.6",
+    "langchain-postgres>=0.0.15",
+    "langchain-huggingface>=0.3.1",
+    "pymupdf4llm>=0.0.27",
+    "requests>=2.32.5",
+    "git+https://github.com/kostyachum/python-markdown-plain-text.git#egg=plain-text-markdown-extention",
 ]
 
 [project.optional-dependencies]
@@ -120,3 +127,6 @@ explicit_package_bases = true
 [[tool.mypy.overrides]]
 module = "src.app.*"
 disallow_untyped_defs = true
+
+[tool.uv.sources]
+plain-text-markdown-extention = { git = "https://github.com/kostyachum/python-markdown-plain-text.git" }

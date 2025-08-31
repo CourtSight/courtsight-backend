@@ -5,6 +5,7 @@ from typing import Optional, List
 from sqlalchemy import DateTime, String, Text, Integer, Float, ForeignKey, Index, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship, DeclarativeBase
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.sql import text
 from pgvector.sqlalchemy import Vector
 
 # Create a separate declarative base without dataclass functionality
@@ -21,7 +22,7 @@ class LegalDocument(LegalDocumentBase):
     __tablename__ = "legal_document"
 
     id: Mapped[int] = mapped_column("id", autoincrement=True, nullable=False, unique=True, primary_key=True)
-    uuid: Mapped[uuid_pkg.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, unique=True, index=True, server_default='gen_random_uuid()')
+    uuid: Mapped[uuid_pkg.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, unique=True, index=True, server_default=text('gen_random_uuid()'))
     
     # Document identification
     case_number: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
@@ -44,8 +45,12 @@ class LegalDocument(LegalDocumentBase):
     # Processing metadata
     content_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
     
+    # Langchain PGStore integration
+    collection_id: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
+    embedding_id: Mapped[Optional[str]] = mapped_column(String, nullable=True, index=True)
+    
     # Audit fields
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default='now()')
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=text('now()'))
     updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
     processed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
     
@@ -55,6 +60,10 @@ class LegalDocument(LegalDocumentBase):
     
     # Relations
     citations: Mapped[List["DocumentCitation"]] = relationship("DocumentCitation", back_populates="document", cascade="all, delete-orphan")
+    
+    # Langchain PGStore relationships (optional - may not be fully functional without langchain models)
+    # collection: Mapped[Optional["LangchainCollection"]] = relationship("LangchainCollection", foreign_keys=[collection_id])
+    # langchain_embedding: Mapped[Optional["LangchainEmbedding"]] = relationship("LangchainEmbedding", foreign_keys=[embedding_id])
 
 
 class DocumentCitation(LegalDocumentBase):
@@ -81,7 +90,7 @@ class DocumentCitation(LegalDocumentBase):
     validation_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True, default=None)
     
     # Audit
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default='now()')
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=text('now()'))
     validated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
     
     # Relations
@@ -116,7 +125,7 @@ class SearchQuery(LegalDocumentBase):
     session_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, default=None)
     
     # Audit
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default='now()')
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=text('now()'))
 
 
 # Database indexes for performance
