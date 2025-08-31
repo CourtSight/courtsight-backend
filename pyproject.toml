@@ -1,7 +1,7 @@
 [project]
-name = "fastapi-boilerplate"
+name = "coursigh"
 version = "0.1.0"
-description = "A fully Async FastAPI boilerplate using SQLAlchemy and Pydantic 2"
+description = "A fully Async FastAPI project for course management, using SQLAlchemy and Pydantic 2"
 license = { text = "MIT" }
 readme = "README.md"
 requires-python = "~=3.11.0"
@@ -40,7 +40,10 @@ dependencies = [
     "langchain-huggingface>=0.3.1",
     "pymupdf4llm>=0.0.27",
     "requests>=2.32.5",
-    "git+https://github.com/kostyachum/python-markdown-plain-text.git#egg=plain-text-markdown-extention",
+    "langchain-google-vertexai>=2.0.28",
+    "guardrails-ai>=0.1.8",
+    "ragas>=0.3.2",
+    "cryptography>=45.0.3",
 ]
 
 [project.optional-dependencies]

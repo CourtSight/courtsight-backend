@@ -117,32 +117,83 @@ class CRUDAdminSettings(BaseSettings):
     CRUD_ADMIN_REDIS_SSL: bool = config("CRUD_ADMIN_REDIS_SSL", default=False)
 
 
-class ExternalServicesSettings(BaseSettings):
-    """Configuration for CourtSight external microservices."""
+class VertexAISettings(BaseSettings):
+    """Google Cloud Vertex AI Model Garden configuration for RAG system."""
     
-    # Embedding Service Configuration
-    EMBEDDING_SERVICE_URL: str = config("EMBEDDING_SERVICE_URL", default="http://localhost:8001")
-    EMBEDDING_API_KEY: str = config("EMBEDDING_API_KEY", default="embedding-service-key")
+    # Project settings
+    PROJECT_ID: str = config("PROJECT_ID", default="g-72-courtsightteam")
+    LOCATION: str = config("LOCATION", default="us-central1")
     
-    # LLM Service Configuration
-    LLM_SERVICE_URL: str = config("LLM_SERVICE_URL", default="http://localhost:8002")
-    LLM_API_KEY: str = config("LLM_API_KEY", default="llm-service-key")
+    # Model Garden endpoints
+    EMBEDDING_SERVICE_URL: str = config("EMBEDDING_SERVICE_URL")
+    EMBEDDING_SERVICE_ENDPOINT: str = config("EMBEDDING_SERVICE_ENDPOINT")
+    LLM_SERVICE_URL: str = config("LLM_SERVICE_URL")
+    LLM_SERVICE_ENDPOINT: str = config("LLM_SERVICE_ENDPOINT")
     
-    # Legal Document Validation Service Configuration
-    VALIDATION_SERVICE_URL: str = config("VALIDATION_SERVICE_URL", default="http://localhost:8003")
-    VALIDATION_API_KEY: str = config("VALIDATION_API_KEY", default="validation-service-key")
+    # Model settings
+    EMBEDDING_MODEL_NAME: str = config("EMBEDDING_MODEL_NAME", default="textembedding-gecko@003")
+    LLM_MODEL_NAME: str = config("LLM_MODEL_NAME", default="chat-bison@002")
     
-    # LLM Analysis Service Configuration
-    LLM_SERVICE_URL: str = config("LLM_SERVICE_URL", default="http://localhost:8003")
-    LLM_SERVICE_API_KEY: str = config("LLM_SERVICE_API_KEY", default="llm-service-key")
+    # Authentication
+    GCLOUD_TOKEN: SecretStr = config("GCLOUD_TOKEN", cast=SecretStr)
+    GOOGLE_APPLICATION_CREDENTIALS: str | None = config("GOOGLE_APPLICATION_CREDENTIALS", default=None)
     
-    # Validation Service Configuration
-    VALIDATION_SERVICE_URL: str = config("VALIDATION_SERVICE_URL", default="http://localhost:8004")
-    VALIDATION_SERVICE_API_KEY: str = config("VALIDATION_SERVICE_API_KEY", default="validation-service-key")
+    # API Keys for services
+    EMBEDDING_SERVICE_API_KEY: str = config("EMBEDDING_SERVICE_API_KEY", default="embedding-service-dev-key")
+    LLM_SERVICE_API_KEY: str = config("LLM_SERVICE_API_KEY", default="llm-service-dev-key")
+
+
+class RAGSettings(BaseSettings):
+    """RAG system configuration following PRD specifications."""
     
-    # Document Parser Service Configuration
-    PARSER_SERVICE_URL: str = config("PARSER_SERVICE_URL", default="http://localhost:8005")
-    PARSER_SERVICE_API_KEY: str = config("PARSER_SERVICE_API_KEY", default="parser-service-key")
+    # Vector database settings
+    DATABASE_URL: str = config("POSTGRES_URL")
+    VECTOR_COLLECTION_NAME: str = config("VECTOR_COLLECTION_NAME", default="supreme_court_docs")
+    
+    # Chunking settings (PRD specifications)
+    PARENT_CHUNK_SIZE: int = config("PARENT_CHUNK_SIZE", default=2000)
+    PARENT_CHUNK_OVERLAP: int = config("PARENT_CHUNK_OVERLAP", default=200)
+    CHILD_CHUNK_SIZE: int = config("CHILD_CHUNK_SIZE", default=400)
+    CHILD_CHUNK_OVERLAP: int = config("CHILD_CHUNK_OVERLAP", default=50)
+    
+    # Search settings
+    MAX_SEARCH_RESULTS: int = config("MAX_SEARCH_RESULTS", default=10)
+    SIMILARITY_THRESHOLD: float = config("SIMILARITY_THRESHOLD", default=0.7)
+    SEARCH_TIMEOUT_SECONDS: int = config("SEARCH_TIMEOUT_SECONDS", default=10)
+    
+    # LLM settings
+    LLM_TEMPERATURE: float = config("LLM_TEMPERATURE", default=0.1)
+    LLM_MAX_TOKENS: int = config("LLM_MAX_TOKENS", default=2048)
+    
+    # Validation settings
+    ENABLE_CLAIM_VALIDATION: bool = config("ENABLE_CLAIM_VALIDATION", default=True)
+    VALIDATION_CONFIDENCE_THRESHOLD: float = config("VALIDATION_CONFIDENCE_THRESHOLD", default=0.7)
+    
+    # Performance settings
+    ENABLE_CACHING: bool = config("ENABLE_CACHING", default=True)
+    CACHE_TTL_SECONDS: int = config("CACHE_TTL_SECONDS", default=3600)
+    BATCH_PROCESSING_SIZE: int = config("BATCH_PROCESSING_SIZE", default=50)
+
+
+class EvaluationSettings(BaseSettings):
+    """RAGAS evaluation and monitoring configuration."""
+    
+    # RAGAS evaluation
+    ENABLE_RAGAS_EVALUATION: bool = config("ENABLE_RAGAS_EVALUATION", default=True)
+    EVALUATION_BATCH_SIZE: int = config("EVALUATION_BATCH_SIZE", default=10)
+    
+    # Logging
+    LOG_LEVEL: str = config("LOG_LEVEL", default="INFO")
+    LOG_FORMAT: str = config("LOG_FORMAT", default="json")
+    
+    # Metrics collection
+    ENABLE_METRICS: bool = config("ENABLE_METRICS", default=True)
+    METRICS_PORT: int = config("METRICS_PORT", default=8080)
+    
+    # Health checks
+    HEALTH_CHECK_TIMEOUT: int = config("HEALTH_CHECK_TIMEOUT", default=5)
+
+
 
 
 class EnvironmentOption(Enum):
@@ -167,10 +218,27 @@ class Settings(
     RedisRateLimiterSettings,
     DefaultRateLimitSettings,
     CRUDAdminSettings,
-    ExternalServicesSettings,
+    VertexAISettings,
+    RAGSettings,
+    EvaluationSettings,
     EnvironmentSettings,
 ):
-    pass
+    """Main application settings combining all configuration sections."""
+    
+    def is_production(self) -> bool:
+        """Check if running in production environment."""
+        return self.ENVIRONMENT == EnvironmentOption.PRODUCTION
+    
+    def is_development(self) -> bool:
+        """Check if running in development environment."""
+        return self.ENVIRONMENT == EnvironmentOption.LOCAL
 
 
+
+    
 settings = Settings()
+
+
+def get_settings() -> Settings:
+    """Get application settings."""
+    return settings
