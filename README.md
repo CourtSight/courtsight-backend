@@ -50,15 +50,23 @@
    - Analisis dan ringkasan otomatis menggunakan LLM
    - Validasi sitasi dan referensi hukum
 
+<img width="4000" height="1847" alt="AIBasedSearchEngineforSupremeCourt" src="https://github.com/user-attachments/assets/2b953982-9524-4ec2-a472-3c667caa4c79" />
+
+
 2. **🤖 Chatbot AI untuk Hukum** *(Coming Soon)*
    - Interaksi percakapan untuk Q&A hukum
    - Analisis kontekstual berbasis RAG (Retrieval-Augmented Generation)
    - Integrasi dengan database putusan pengadilan
 
+<img width="4000" height="2483" alt="AIChatbotforSupremeCourtLaw" src="https://github.com/user-attachments/assets/7bb4029c-5b9c-4bdb-b9c9-1866ef9d3330" />
+
+
+
 3. **🎙️ Asisten Suara AI** *(Coming Soon)*
    - Transkripsi real-time untuk notulensi pengacara
    - Analisis percakapan dan ekstraksi poin-poin kunci
    - Integrasi dengan basis data hukum
+<img width="4000" height="1954" alt="AIVoiceAssistantforLawyersNote-Taking" src="https://github.com/user-attachments/assets/f804b48b-6b8f-4585-bd40-1ac1536ad7f8" />
 
 ---
 
