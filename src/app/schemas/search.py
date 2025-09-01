@@ -65,7 +65,7 @@ class SearchFilters(BaseModel):
     case_number: Optional[str] = Field(None, description="Specific case number")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "jurisdiction": "ID",
                 "date_range": {
@@ -99,7 +99,7 @@ class SearchRequest(BaseModel):
         return v.strip()
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "query": "putusan mahkamah agung tentang korupsi",
                 "filters": {
@@ -124,7 +124,7 @@ class SourceDocument(BaseModel):
     confidence_score: float = Field(0.0, ge=0.0, le=1.0, description="Relevance confidence")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "title": "Putusan Kasasi No. 123/K/Pid/2023",
                 "case_number": "123/K/Pid/2023",
@@ -154,7 +154,7 @@ class SearchResult(BaseModel):
     legal_areas: List[str] = Field(default_factory=list, description="Relevant legal areas/topics")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "summary": "Berdasarkan putusan yang ditemukan, korupsi dana desa...",
                 "key_points": [
@@ -189,7 +189,7 @@ class RAGMetrics(BaseModel):
     cache_hit: bool = Field(False, description="Whether result was cached")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "query_time": 2.5,
                 "retrieval_time": 0.8,
@@ -213,7 +213,7 @@ class SearchResponse(BaseModel):
     has_more: bool = Field(False, description="Whether more results are available")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "query": "putusan mahkamah agung tentang korupsi",
                 "results": [
@@ -244,7 +244,7 @@ class DocumentMetadata(BaseModel):
     title: Optional[str] = Field(None, description="Document title")
     court: Optional[str] = Field(None, description="Court name")
     jurisdiction: Optional[Jurisdiction] = Field(None, description="Jurisdiction")
-    date: Optional[date] = Field(None, description="Document date")
+    date: Optional[datetime] = Field(None, description="Document date")
     case_type: Optional[CaseType] = Field(None, description="Case type")
     court_level: Optional[CourtLevel] = Field(None, description="Court level")
     language: str = Field("id", description="Document language code")
@@ -252,7 +252,7 @@ class DocumentMetadata(BaseModel):
     file_format: str = Field("pdf", description="Original file format")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "case_number": "123/K/Pid/2023",
                 "title": "Putusan Kasasi Tindak Pidana Korupsi",
@@ -295,7 +295,7 @@ class BulkDocumentRequest(BaseModel):
         return v
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "documents": [
                     {
@@ -323,7 +323,7 @@ class BulkDocumentResponse(BaseModel):
     processing_id: Optional[str] = Field(None, description="Background processing ID")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "status": "completed",
                 "message": "Documents processed successfully",
@@ -354,7 +354,7 @@ class HealthResponse(BaseModel):
     version: str = Field("1.0.0", description="API version")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "status": "healthy",
                 "timestamp": "2023-12-01T10:30:00Z",

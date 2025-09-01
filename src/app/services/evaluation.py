@@ -40,7 +40,7 @@ class EvaluationSample(BaseModel):
     ground_truth: Optional[str] = Field(None, description="Reference answer if available")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "question": "Apa hukuman untuk tindak pidana korupsi?",
                 "answer": "Berdasarkan putusan yang tersedia, hukuman untuk korupsi...",
@@ -73,7 +73,7 @@ class RAGASMetrics(BaseModel):
         return sum(scores) / len(scores)
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "faithfulness": 0.85,
                 "answer_relevancy": 0.78,
@@ -94,7 +94,7 @@ class LegalDomainMetrics(BaseModel):
     temporal_relevance: float = Field(..., ge=0.0, le=1.0, description="Temporal relevance of citations")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "legal_accuracy": 0.88,
                 "citation_quality": 0.75,
@@ -134,7 +134,7 @@ class BatchEvaluationResult(BaseModel):
     total_processing_time: float = Field(..., description="Total processing time")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "results": [],
                 "aggregate_metrics": {

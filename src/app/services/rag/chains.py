@@ -18,7 +18,6 @@ from langchain_core.runnables import (
 )
 from langchain_core.documents import Document
 from langchain_postgres import PGVector
-from langchain_google_vertexai import  VertexAIModelGarden
 from langchain.retrievers import ParentDocumentRetriever
 from langchain.storage import InMemoryStore
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -60,8 +59,8 @@ class CourtRAGChains:
     def __init__(
         self,
         vector_store: PGVector,
-        llm: VertexAIModelGarden,
-        embeddings: VertexAIModelGarden,
+        llm,  # Will be VertexAILLM
+        embeddings,  # Will be VertexAIEmbeddingsService
         enable_validation: bool = True,
     ):
         self.vector_store = vector_store
@@ -334,25 +333,12 @@ def create_rag_chains(
         Configured CourtRAGChains instance
     """
     
-    # Initialize LangChain components
-    embeddings = VertexAIModelGarden(
-        project=settings.PROJECT_ID,
-        location=settings.LOCATION,
-        endpoint_id=settings.EMBEDDING_SERVICE_ENDPOINT,  # Your embedding endpoint ID
-    )
-    
-    vector_store = PGVector(
-        embeddings=embeddings,
-        collection_name=collection_name,
-        connection=database_url,
-        use_jsonb=True
-    )
-    
-    llm = VertexAIModelGarden(
-        project=settings.PROJECT_ID,
-        location=settings.LOCATION,
-        endpoint_id=settings.LLM_SERVICE_ENDPOINT,  # Your LLM endpoint ID
-    )
+    # Initialize components - TODO: Replace with manual Vertex AI service
+    # embeddings = create_vertex_ai_embeddings()
+    # llm = create_vertex_ai_llm()
+    embeddings = None  # Placeholder
+    llm = None  # Placeholder
+    vector_store = None  # Placeholder
     
     return CourtRAGChains(
         vector_store=vector_store,
