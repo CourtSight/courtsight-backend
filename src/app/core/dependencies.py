@@ -22,7 +22,6 @@ from ..services.rag.chains import CourtRAGChains, create_rag_chains
 from ..services.document_processor import DocumentProcessor, create_document_processor
 from ..services.guardrails_validator import GuardrailsValidator, create_guardrails_validator
 from ..services.evaluation import RAGEvaluator, create_rag_evaluator
-from ..services.vertex_ai_service import VertexAILLM, VertexAIEmbeddingsService, create_vertex_ai_llm, create_vertex_ai_embeddings
 from ..core.database import get_db_session
 from ..models.user import User
 from ..crud.user import get_user_by_id
@@ -59,14 +58,18 @@ async def get_database_session() -> AsyncGenerator[AsyncSession, None]:
 @lru_cache()
 def get_vertex_ai_embeddings(
     settings: Settings = Depends(get_settings)
-) -> VertexAIEmbeddingsService:
+) -> VertexAIModelGarden:
     """
     Get configured VertexAI embeddings instance.
     
     Uses LRU cache to ensure single instance per application lifecycle.
     """
     try:
-        return create_vertex_ai_embeddings()
+        return VertexAIModelGarden(
+            project=settings.PROJECT_ID,
+            location=settings.LOCATION,
+            endpoint_id=settings.LLM_SERVICE_URL.split('/')[-2],  # Extract endpoint ID from URL
+        )
     except Exception as e:
         logger.error(f"Failed to initialize VertexAI embeddings: {str(e)}")
         raise HTTPException(
@@ -76,34 +79,48 @@ def get_vertex_ai_embeddings(
 
 
 @lru_cache()
-def get_vertex_ai_embeddings_direct() -> VertexAIEmbeddingsService:
+def get_vertex_ai_embeddings_direct() -> VertexAIEmbeddings:
     """Get VertexAI embeddings instance directly (for testing)."""
+    settings = get_settings()
     try:
-        return create_vertex_ai_embeddings()
+        return VertexAIEmbeddings(
+            model_name=settings.EMBEDDINGS_MODEL,
+            project=settings.PROJECT_ID,
+            location=settings.LOCATION,
+        )
     except Exception as e:
         logger.error(f"Failed to initialize VertexAI embeddings: {str(e)}")
         raise
 
 
-def get_vertex_ai_llm_direct() -> VertexAILLM:
+def get_vertex_ai_llm_direct() -> VertexAIModelGarden:
     """Get VertexAI LLM instance directly (for testing)."""
+    settings = get_settings()
     try:
-        return create_vertex_ai_llm()
+        return VertexAIModelGarden(
+            project=settings.PROJECT_ID,
+            location=settings.LOCATION,
+            endpoint_id=settings.LLM_SERVICE_URL.split('/')[-2],  # Extract endpoint ID from URL
+        )
     except Exception as e:
-        logger.error(f"Failed to initialize VertexAI LLM: {str(e)}")
+        logger.error(f"Failed to initialize VertexAI Model Garden LLM: {str(e)}")
         raise
 
 
 def get_vertex_ai_embeddings(
     settings: Settings = Depends(get_settings)
-) -> VertexAIEmbeddingsService:
+) -> VertexAIEmbeddings:
     """
     Get configured VertexAI embeddings instance.
     
     Uses dependency injection for FastAPI integration.
     """
     try:
-        return create_vertex_ai_embeddings()
+        return VertexAIEmbeddings(
+            model_name=settings.EMBEDDINGS_MODEL,
+            project=settings.PROJECT_ID,
+            location=settings.LOCATION,
+        )
     except Exception as e:
         logger.error(f"Failed to initialize VertexAI embeddings: {str(e)}")
         raise HTTPException(
@@ -114,16 +131,37 @@ def get_vertex_ai_embeddings(
 
 def get_vertex_ai_llm(
     settings: Settings = Depends(get_settings)
-) -> VertexAILLM:
+) -> VertexAIModelGarden:
     """
     Get configured VertexAI Model Garden LLM instance.
     
     Uses dependency injection for FastAPI integration.
     """
     try:
-        return create_vertex_ai_llm()
+        return VertexAIModelGarden(
+            project=settings.PROJECT_ID,
+            location=settings.LOCATION,
+            endpoint_id=settings.LLM_SERVICE_URL.split('/')[-2],  # Extract endpoint ID from URL
+        )
     except Exception as e:
-        logger.error(f"Failed to initialize VertexAI LLM: {str(e)}")
+        logger.error(f"Failed to initialize VertexAI Model Garden LLM: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="LLM service unavailable"
+        )
+    """
+    Get configured VertexAI Model Garden LLM instance.
+    
+    Uses LRU cache to ensure single instance per application lifecycle.
+    """
+    try:
+        return VertexAIModelGarden(
+            project=settings.PROJECT_ID,
+            location=settings.LOCATION,
+            endpoint_id=settings.LLM_SERVICE_URL.split('/')[-2],  # Extract endpoint ID from URL
+        )
+    except Exception as e:
+        logger.error(f"Failed to initialize VertexAI Model Garden LLM: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="LLM service unavailable"
@@ -132,7 +170,7 @@ def get_vertex_ai_llm(
 
 @lru_cache()
 def get_vector_store(
-    embeddings: VertexAIEmbeddingsService = Depends(get_vertex_ai_embeddings),
+    embeddings: VertexAIModelGarden = Depends(get_vertex_ai_embeddings),
     settings: Settings = Depends(get_settings)
 ) -> PGVector:
     """

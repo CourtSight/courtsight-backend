@@ -13,6 +13,7 @@ from datetime import datetime
 from langchain_core.output_parsers import BaseOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnableLambda
+from langchain_google_vertexai import VertexAIModelGarden
 
 try:
     import guardrails as gd
@@ -37,7 +38,7 @@ class Claim(BaseModel):
     source_context: str = Field(..., description="Context from which claim was extracted")
     
     class Config:
-        json_schema_extra = {
+        schema_extra = {
             "example": {
                 "text": "Terdakwa dijatuhi hukuman 5 tahun penjara",
                 "claim_id": "claim_001",
@@ -54,7 +55,7 @@ class ValidationEvidence(BaseModel):
     relevance_score: float = Field(..., ge=0.0, le=1.0, description="Relevance score")
     
     class Config:
-        json_schema_extra = {
+        schema_extra = {
             "example": {
                 "evidence_text": "Pengadilan menjatuhkan pidana penjara selama 5 tahun",
                 "source_document": "putusan_123_k_pid_2023",
@@ -75,7 +76,7 @@ class ClaimValidationResult(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.now, description="Validation timestamp")
     
     class Config:
-        json_schema_extra = {
+        schema_extra = {
             "example": {
                 "claim": {
                     "text": "Terdakwa dijatuhi hukuman 5 tahun penjara",
@@ -106,7 +107,7 @@ class BatchValidationResult(BaseModel):
     processing_time: float = Field(..., description="Total processing time in seconds")
     
     class Config:
-        json_schema_extra = {
+        schema_extra = {
             "example": {
                 "claims": [],
                 "overall_confidence": 0.85,
@@ -133,7 +134,7 @@ class GuardrailsValidator:
     
     def __init__(
         self,
-        llm,  # Will be VertexAILLM
+        llm: VertexAIModelGarden,
         enable_strict_validation: bool = True,
         confidence_threshold: float = 0.7
     ):
@@ -486,7 +487,7 @@ class GuardrailsValidator:
 
 
 def create_guardrails_validator(
-    llm,  # Will be VertexAILLM
+    llm: VertexAIModelGarden,
     enable_strict_validation: bool = True,
     confidence_threshold: float = 0.7
 ) -> GuardrailsValidator:
