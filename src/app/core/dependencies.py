@@ -180,62 +180,6 @@ def get_vector_store(
 
 
 # Service Dependencies
-def get_rag_chains(
-    vector_store: PGVector = Depends(get_vector_store),
-    llm: ChatGoogleGenerativeAI = Depends(get_vertex_ai_llm),
-    embeddings: GoogleGenerativeAIEmbeddings = Depends(get_vertex_ai_embeddings),
-    settings: Settings = Depends(get_settings)
-) -> CourtRAGChains:
-    """Get configured RAG chains."""
-    try:
-        return CourtRAGChains(
-            vector_store=vector_store,
-            llm=llm,
-            embeddings=embeddings,
-            enable_validation=settings.ENABLE_CLAIM_VALIDATION
-        )
-    except Exception as e:
-        logger.error(f"Failed to initialize RAG chains: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="RAG system unavailable"
-        )
-
-
-def get_rag_service(
-    rag_chains: CourtRAGChains = Depends(get_rag_chains)
-) -> RAGService:
-    """Get configured RAG service."""
-    try:
-        return RAGService(rag_chains)
-    except Exception as e:
-        logger.error(f"Failed to initialize RAG service: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Search service unavailable"
-        )
-
-
-def get_document_processor(
-    vector_store: PGVector = Depends(get_vector_store),
-    embeddings: GoogleGenerativeAIEmbeddings = Depends(get_vertex_ai_embeddings),
-    settings: Settings = Depends(get_settings)
-) -> DocumentProcessor:
-    """Get configured document processor."""
-    try:
-        return DocumentProcessor(
-            vector_store=vector_store,
-            embeddings=embeddings,
-            enable_metadata_extraction=True
-        )
-    except Exception as e:
-        logger.error(f"Failed to initialize document processor: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Document processing service unavailable"
-        )
-
-
 def get_guardrails_validator(
     llm: ChatGoogleGenerativeAI = Depends(get_vertex_ai_llm),
     settings: Settings = Depends(get_settings)
@@ -252,6 +196,31 @@ def get_guardrails_validator(
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Validation service unavailable"
+        )
+
+
+def get_rag_chains(
+    vector_store: PGVector = Depends(get_vector_store),
+    llm: ChatGoogleGenerativeAI = Depends(get_vertex_ai_llm),
+    embeddings: GoogleGenerativeAIEmbeddings = Depends(get_vertex_ai_embeddings),
+    settings: Settings = Depends(get_settings),
+    guardrails_validator: GuardrailsValidator = Depends(get_guardrails_validator)
+) -> CourtRAGChains:
+    """Get configured RAG chains."""
+    try:
+        return CourtRAGChains(
+            vector_store=vector_store,
+            llm=llm,
+            embeddings=embeddings,
+            enable_validation=settings.ENABLE_CLAIM_VALIDATION,
+            use_redis_store=True,  # Use Redis for production
+            guardrails_validator=guardrails_validator
+        )
+    except Exception as e:
+        logger.error(f"Failed to initialize RAG chains: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="RAG system unavailable"
         )
 
 
@@ -537,7 +506,6 @@ __all__ = [
     "get_vector_store",
     "get_rag_chains",
     "get_rag_service",
-    "get_document_processor",
     "get_guardrails_validator",
     "get_rag_evaluator",
     "get_current_user",

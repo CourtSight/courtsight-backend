@@ -81,14 +81,11 @@ class RAGService:
             lc_filters = self._convert_filters(request.filters)
             
             # Execute RAG pipeline with timeout for PRD compliance
-            print(f"DEBUG: About to invoke RAG chains with query: {request.query}")
             # Use synchronous invoke for now
             result = self.rag_chains.invoke(request.query, lc_filters)
-            print(f"DEBUG: RAG chains result: {result}")
             
             # Check if result is None
             if result is None:
-                print("DEBUG: RAG chains returned None")
                 raise RAGServiceError("RAG pipeline returned no results")
             
             # Calculate metrics

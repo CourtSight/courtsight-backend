@@ -19,6 +19,8 @@ from langchain_community.document_loaders import (
 )
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain.storage import InMemoryStore
+from langchain_community.storage import RedisStore
+from redis import Redis
 from langchain.retrievers import ParentDocumentRetriever
 from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
 from langchain_postgres import PGVector
@@ -58,12 +60,14 @@ class DocumentProcessor:
         vector_store: PGVector,
         embeddings: GoogleGenerativeAIEmbeddings,
         enable_metadata_extraction: bool = True,
-        callback_manager: Optional[CallbackManager] = None
+        callback_manager: Optional[CallbackManager] = None,
+        use_redis_store: bool = True
     ):
         self.vector_store = vector_store
         self.embeddings = embeddings
         self.enable_metadata_extraction = enable_metadata_extraction
         self.callback_manager = callback_manager or CallbackManager([StdOutCallbackHandler()])
+        self.use_redis_store = use_redis_store
         
         # Initialize text splitters with PRD specifications
         self.parent_splitter = RecursiveCharacterTextSplitter(
@@ -81,8 +85,21 @@ class DocumentProcessor:
         )
         
         # Document store for parent-child retrieval
-        # TODO: Replace with persistent store for production
-        self.doc_store = InMemoryStore()
+        # Use Redis for production persistence
+        if self.use_redis_store:
+            try:
+                redis_client = Redis(
+                    host=settings.REDIS_CACHE_HOST,
+                    port=settings.REDIS_CACHE_PORT,
+                    decode_responses=True
+                )
+                self.doc_store = RedisStore(client=redis_client)
+                logger.info("Using Redis store for document persistence")
+            except Exception as e:
+                logger.warning(f"Failed to connect to Redis, falling back to InMemoryStore: {str(e)}")
+                self.doc_store = InMemoryStore()
+        else:
+            self.doc_store = InMemoryStore()
         
         # Setup parent-child retriever
         self.retriever = ParentDocumentRetriever(
@@ -447,7 +464,8 @@ class DocumentProcessor:
 def create_document_processor(
     database_url: str,
     collection_name: str = "supreme_court_docs",
-    enable_metadata_extraction: bool = True
+    enable_metadata_extraction: bool = True,
+    use_redis_store: bool = True
 ) -> DocumentProcessor:
     """
     Factory function to create configured document processor.
@@ -456,6 +474,7 @@ def create_document_processor(
         database_url: PostgreSQL connection string
         collection_name: Vector store collection name
         enable_metadata_extraction: Whether to extract metadata
+        use_redis_store: Whether to use Redis for document persistence
         
     Returns:
         Configured DocumentProcessor instance
@@ -477,5 +496,6 @@ def create_document_processor(
     return DocumentProcessor(
         vector_store=vector_store,
         embeddings=embeddings,
-        enable_metadata_extraction=enable_metadata_extraction
+        enable_metadata_extraction=enable_metadata_extraction,
+        use_redis_store=use_redis_store
     )

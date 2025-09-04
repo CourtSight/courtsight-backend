@@ -5,6 +5,7 @@ and monitoring as specified in the PRD requirements.
 """
 
 import os
+import logging
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel, Field
 
@@ -21,11 +22,15 @@ from langchain_postgres import PGVector
 from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
 from langchain.retrievers import ParentDocumentRetriever
 from langchain.storage import InMemoryStore
+from langchain_community.storage import RedisStore
+from redis import Redis
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain.callbacks import StdOutCallbackHandler
 # Pydantic models for structured outputs
 from src.app.core.config import settings
 from src.app.schemas.search import SearchResult as SchemaSearchResult, ValidationStatus
+
+logger = logging.getLogger(__name__)
 
 
 
@@ -59,19 +64,35 @@ class CourtRAGChains:
         llm: ChatGoogleGenerativeAI,
         embeddings: GoogleGenerativeAIEmbeddings,
         enable_validation: bool = True,
+        use_redis_store: bool = True,
+        guardrails_validator: Optional[Any] = None
     ):
         self.vector_store = vector_store
         self.llm = llm
         self.embeddings = embeddings
         self.enable_validation = enable_validation
+        self.use_redis_store = use_redis_store
+        self.guardrails_validator = guardrails_validator
         
         # Initialize document store for parent-child retrieval
-        self.doc_store = InMemoryStore()  # TODO: Replace with persistent store for production
+        # Use Redis for production persistence
+        if self.use_redis_store:
+            try:
+                redis_client = Redis(
+                    host=settings.REDIS_CACHE_HOST,
+                    port=settings.REDIS_CACHE_PORT,
+                    decode_responses=True
+                )
+                self.doc_store = RedisStore(client=redis_client)
+                logger.info("Using Redis store for document persistence")
+            except Exception as e:
+                logger.warning(f"Failed to connect to Redis, falling back to InMemoryStore: {str(e)}")
+                self.doc_store = InMemoryStore()
+        else:
+            self.doc_store = InMemoryStore()
         
         # Setup simple retriever for testing
-        self.retriever = self.vector_store.as_retriever(
-            search_kwargs={"k": 5}  # Retrieve top 5 documents
-        )
+        self.retriever = self._setup_parent_child_retriever()
         
         # Core LCEL chains
         self.search_chain = self._build_search_chain()
@@ -109,39 +130,60 @@ class CourtRAGChains:
         Build the core search and generation chain using LCEL.
         Implements the RAG flow: Query -> Retrieve -> Generate -> Format
         """
-        
+    
         # Indonesian legal system prompt template as per existing workdir logic
         system_prompt = ChatPromptTemplate.from_template("""
-        Anda adalah asisten hukum yang menganalisis putusan Mahkamah Agung Indonesia.
+        Anda adalah mesin pencari cerdas berbasis AI yang khusus dirancang untuk tugas pencarian dan analisis hukum di Indonesia, dengan fokus pada putusan Mahkamah Agung dan dokumen hukum terkait.
         
-        INSTRUKSI PENTING:
-        - Berikan rangkuman yang akurat berdasarkan konteks yang diberikan
-        - Ekstrak poin-poin hukum kunci dari dokumen
-        - Sertakan sitasi lengkap (nomor putusan, bagian dokumen, chunk_id)
-        - Gunakan bahasa hukum formal namun mudah dipahami
-        - Jika informasi tidak mencukupi, nyatakan dengan jelas
-        - Jangan berhalusinasi atau menambahkan informasi di luar konteks
+        INSTRUKSI PENTING UNTUK MESIN PENCARI HUKUM:
+        - **Fokus pada Relevansi**: Prioritaskan hasil yang paling relevan dengan pertanyaan pengguna berdasarkan konteks dokumen yang disediakan. Gunakan similarity search dan ranking untuk menentukan urutan.
+        - **Akurasi Hukum**: Berikan informasi yang akurat, faktual, dan didasarkan sepenuhnya pada konteks. Jangan tambahkan asumsi, interpretasi pribadi, atau informasi di luar dokumen sumber.
+        - **Ekstraksi Poin Kunci**: Identifikasi poin-poin hukum utama, preseden, dan argumen hukum dari dokumen, termasuk referensi ke pasal undang-undang atau yurisprudensi terkait.
+        - **Sitasi Lengkap**: Sertakan sitasi yang lengkap dan dapat diverifikasi, termasuk nomor putusan, bagian dokumen, chunk_id, dan halaman jika tersedia. Gunakan format standar hukum Indonesia.
+        - **Bahasa Formal**: Gunakan bahasa hukum formal namun jelas dan mudah dipahami, hindari jargon berlebihan.
+        - **Penanganan Ketidakcukupan**: Jika konteks tidak cukup untuk menjawab sepenuhnya, nyatakan dengan jelas dan sarankan pencarian tambahan. Jangan berhalusinasi atau mengisi kekosongan dengan informasi eksternal.
+        - **Optimasi untuk Pencarian**: Strukturkan respons untuk memfasilitasi navigasi cepat, seperti highlighting bagian relevan dan saran query terkait.
+        - **Validasi Otomatis**: Evaluasi keandalan setiap klaim berdasarkan bukti dalam konteks (Supported/Partially Supported/Unsupported/Uncertain).
         
-        KONTEKS DOKUMEN:
+        KONTEKS DOKUMEN YANG TERSEDIA:
         {context}
         
-        PERTANYAAN PENGGUNA:
+        PERTANYAAN PENGGUNA (Query Pencarian):
         {question}
         
-        Berikan respon dalam format JSON dengan struktur:
+        TUGAS ANDA:
+        Analisis konteks di atas untuk memberikan hasil pencarian yang optimal. Jika tidak ada dokumen relevan, kembalikan respons kosong yang sesuai.
+        
+        Berikan respons DALAM FORMAT JSON PRESISI dengan struktur berikut (pastikan semua field terisi berdasarkan konteks):
         {{
-            "summary": "ringkasan ringkas dan faktual",
-            "key_points": ["poin hukum 1", "poin hukum 2", ...],
+            "summary": "Ringkasan singkat dan faktual dari hasil pencarian, maksimal 200 kata, fokus pada jawaban langsung untuk query",
+            "key_points": ["Poin hukum kunci 1 dengan sitasi", "Poin hukum kunci 2 dengan sitasi", ...],
             "source_documents": [
-                {{
-                    "title": "judul dokumen",
-                    "case_number": "nomor perkara",
-                    "excerpt": "kutipan relevan",
-                    "chunk_id": "ID chunk"
-                }}
+            {{
+                "title": "Judul dokumen lengkap",
+                "case_number": "Nomor perkara resmi (contoh: 123/PID/2023)",
+                "excerpt": "Kutipan relevan langsung dari dokumen, maksimal 300 kata, dengan highlighting bagian penting",
+                "chunk_id": "ID chunk spesifik dari dokumen",
+                "validation_status": "Supported/Partially Supported/Unsupported/Uncertain",
+                "relevance_score": 0.95,
+                "legal_areas": ["Area hukum 1", "Area hukum 2"]
+            }}
             ],
-            "validation_status": "Supported"
+            "confidence_score": 0.85,
+            "related_queries": ["Saran query pencarian terkait 1", "Saran query pencarian terkait 2"],
+            "metadata": {{
+            "total_documents_found": 5,
+            "search_timestamp": "2024-10-01T12:00:00Z",
+            "top_relevance_threshold": 0.8,
+            "search_strategy": "semantic similarity + legal context matching"
+            "disclaimer": "Hasil berdasarkan dokumen tersedia; konsultasikan ahli hukum untuk nasihat profesional"
+            }}
         }}
+        
+        CATATAN TAMBAHAN:
+        - Jika query tidak relevan dengan hukum Indonesia, kembalikan summary: "Query tidak terkait dengan domain hukum Indonesia."
+        - Pastikan respons dapat di-parse sebagai JSON valid tanpa tambahan teks luar.
+        - Optimalkan untuk efisiensi: Hindari redundansi dan fokus pada informasi actionable.
         """)
         
         # Context formatting function
@@ -191,76 +233,129 @@ class CourtRAGChains:
     
     def _build_validation_chain(self) -> RunnableSequence:
         """
-        Build claim validation chain using Guardrails pattern.
+        Build claim validation chain using Guardrails validator.
         Implements PRD requirement for factual claim verification.
         """
         
-        # Claim extraction prompt
-        extraction_prompt = ChatPromptTemplate.from_template("""
-        Ekstrak semua klaim faktual dari respon berikut yang dapat diverifikasi:
-        
-        RESPON: {response}
-        
-        Identifikasi klaim-klaim spesifik yang dapat dicek kebenarannya terhadap dokumen sumber.
-        Berikan dalam format JSON:
-        {{
-            "claims": ["klaim 1", "klaim 2", ...]
-        }}
-        """)
-        
-        # Claim verification prompt
-        verification_prompt = ChatPromptTemplate.from_template("""
-        Verifikasi setiap klaim berikut terhadap konteks dokumen yang tersedia:
-        
-        KLAIM YANG AKAN DIVERIFIKASI:
-        {claims}
-        
-        KONTEKS DOKUMEN:
-        {context}
-        
-        Untuk setiap klaim, tentukan status validasi:
-        - "Supported": Klaim didukung penuh oleh bukti dalam dokumen
-        - "Partially Supported": Klaim didukung sebagian dengan beberapa ketidakpastian  
-        - "Unsupported": Klaim tidak didukung atau bertentangan dengan dokumen
-        - "Uncertain": Tidak cukup informasi untuk memverifikasi
-        
-        Berikan hasil dalam format JSON:
-        {{
-            "claims": [
-                {{
-                    "claim": "teks klaim",
-                    "status": "Supported/Partially Supported/Unsupported/Uncertain",
-                    "evidence": ["bukti 1", "bukti 2"],
-                    "source_chunks": ["chunk_id_1", "chunk_id_2"]
-                }}
-            ],
-            "overall_confidence": 0.85,
-            "filtered_response": "respon yang telah difilter"
-        }}
-        """)
-        
-        # Claim extraction chain
-        extract_claims = (
-            extraction_prompt
-            | self.llm
-            | JsonOutputParser()
-        )
-        
-        # Verification chain
-        verify_claims = (
-            verification_prompt
-            | self.llm  
-            | JsonOutputParser(pydantic_object=ValidationResult)
-        )
-        
-        # Complete validation pipeline
-        validation_chain = (
-            {
-                "claims": RunnableLambda(lambda x: extract_claims.invoke({"response": x["response"]})),
-                "context": RunnableLambda(lambda x: x["context"])
-            }
-            | verify_claims
-        )
+        if self.guardrails_validator:
+            # Use the injected Guardrails validator
+            def validate_with_guardrails(data: Dict[str, Any]) -> ValidationResult:
+                """Validate claims using Guardrails validator."""
+                try:
+                    response = data.get("response", "")
+                    context_docs = data.get("context", [])
+                    
+                    # Format context documents for guardrails
+                    evidence_documents = []
+                    if isinstance(context_docs, list):
+                        for doc in context_docs:
+                            if hasattr(doc, 'page_content'):
+                                evidence_documents.append({
+                                    'source': getattr(doc, 'metadata', {}).get('source', 'unknown'),
+                                    'content': doc.page_content
+                                })
+                    
+                    # Use guardrails validator to validate the response
+                    validation_result = self.guardrails_validator.validate_batch(
+                        text=response,
+                        evidence_documents=evidence_documents
+                    )
+                    
+                    # Convert to our ValidationResult format
+                    claims = []
+                    for claim_result in validation_result.claims:
+                        claims.append(ClaimValidation(
+                            claim=claim_result.claim.text,
+                            status=claim_result.status,
+                            evidence=[ev.evidence_text for ev in claim_result.evidence],
+                            source_chunks=[ev.chunk_id for ev in claim_result.evidence]
+                        ))
+                    
+                    return ValidationResult(
+                        claims=claims,
+                        overall_confidence=validation_result.overall_confidence,
+                        filtered_response=validation_result.filtered_text
+                    )
+                    
+                except Exception as e:
+                    logger.error(f"Guardrails validation failed: {str(e)}")
+                    # Fallback to basic validation
+                    return ValidationResult(
+                        claims=[],
+                        overall_confidence=0.5,
+                        filtered_response=data.get("response", "")
+                    )
+            
+            validation_chain = RunnableLambda(validate_with_guardrails)
+            
+        else:
+            # Fallback to basic LLM-based validation
+            # Claim extraction prompt
+            extraction_prompt = ChatPromptTemplate.from_template("""
+            Ekstrak semua klaim faktual dari respon berikut yang dapat diverifikasi:
+            
+            RESPON: {response}
+            
+            Identifikasi klaim-klaim spesifik yang dapat dicek kebenarannya terhadap dokumen sumber.
+            Berikan dalam format JSON:
+            {{
+                "claims": ["klaim 1", "klaim 2", ...]
+            }}
+            """)
+            
+            # Claim verification prompt
+            verification_prompt = ChatPromptTemplate.from_template("""
+            Verifikasi setiap klaim berikut terhadap konteks dokumen yang tersedia:
+            
+            KLAIM YANG AKAN DIVERIFIKASI:
+            {claims}
+            
+            KONTEKS DOKUMEN:
+            {context}
+            
+            Untuk setiap klaim, tentukan status validasi:
+            - "Supported": Klaim didukung penuh oleh bukti dalam dokumen
+            - "Partially Supported": Klaim didukung sebagian dengan beberapa ketidakpastian  
+            - "Unsupported": Klaim tidak didukung atau bertentangan dengan dokumen
+            - "Uncertain": Tidak cukup informasi untuk memverifikasi
+            
+            Berikan hasil dalam format JSON:
+            {{
+                "claims": [
+                    {{
+                        "claim": "teks klaim",
+                        "status": "Supported/Partially Supported/Unsupported/Uncertain",
+                        "evidence": ["bukti 1", "bukti 2"],
+                        "source_chunks": ["chunk_id_1", "chunk_id_2"]
+                    }}
+                ],
+                "overall_confidence": 0.85,
+                "filtered_response": "respon yang telah difilter"
+            }}
+            """)
+            
+            # Claim extraction chain
+            extract_claims = (
+                extraction_prompt
+                | self.llm
+                | JsonOutputParser()
+            )
+            
+            # Verification chain
+            verify_claims = (
+                verification_prompt
+                | self.llm  
+                | JsonOutputParser(pydantic_object=ValidationResult)
+            )
+            
+            # Complete validation pipeline
+            validation_chain = (
+                {
+                    "claims": RunnableLambda(lambda x: extract_claims.invoke({"response": x["response"]})),
+                    "context": RunnableLambda(lambda x: x["context"])
+                }
+                | verify_claims
+            )
         
         return validation_chain
     
@@ -282,16 +377,55 @@ class CourtRAGChains:
                 | RunnableLambda(self._merge_results)
             )
         else:
-            # Simple pipeline without validation
-            complete_pipeline = self.search_chain
-        
+            # Pipeline without validation
+            complete_pipeline = self.search_chain | RunnableLambda(lambda x: x)
+            # Simple pipeline without validation --- IGNORE ---
+            # complete_pipeline = self.search_chain --- IGNORE ---
+         # --- IGNORE ---
         return complete_pipeline
     
     def _merge_results(self, validation_result: Dict[str, Any]) -> SearchResult:
-        """Merge search results with validation results."""
-        # Implementation logic to combine search and validation results
-        # This ensures only validated claims are included in final response
-        pass
+        """
+        Merge search results with validation results.
+        Combines the filtered response from validation with claim statuses to create a validated SearchResult.
+        """
+        # Extract data from validation result
+        claims = validation_result.get('claims', [])
+        overall_confidence = validation_result.get('overall_confidence', 0.0)
+        filtered_response = validation_result.get('filtered_response', '')
+        
+        # Use filtered response as summary
+        summary = filtered_response
+        
+        # Extract supported claims as key points
+        key_points = [
+            claim['claim'] for claim in claims 
+            if claim.get('status') in ['Supported', 'Partially Supported']
+        ]
+        
+        # For source_documents, collect unique source chunks (document details not available in validation result)
+        # In a full implementation, you'd need to pass original context or retrieve documents by chunk_id
+        source_documents = []  # Placeholder - requires additional context to populate properly
+        
+        # Determine overall validation status based on confidence
+        if overall_confidence >= 0.8:
+            validation_status = ValidationStatus.SUPPORTED
+        elif overall_confidence >= 0.5:
+            validation_status = ValidationStatus.PARTIALLY_SUPPORTED
+        elif overall_confidence > 0.0:
+            validation_status = ValidationStatus.UNSUPPORTED
+        else:
+            validation_status = ValidationStatus.UNCERTAIN
+        
+        # Create and return SearchResult
+        return SearchResult(
+            summary=summary,
+            key_points=key_points,
+            source_documents=source_documents,
+            validation_status=validation_status,
+            confidence_score=overall_confidence,
+            legal_areas=[]  # Not available from validation result
+        )
     
     def invoke(self, query: str, filters: Optional[Dict[str, Any]] = None) -> SearchResult:
         """
@@ -310,13 +444,9 @@ class CourtRAGChains:
                 self._apply_filters(filters)
             
             # Invoke the complete pipeline
-            print(f"DEBUG: Invoking search chain with query: {query}")
             raw_response = self.search_chain.invoke({"query": query})
-            print(f"DEBUG: Search chain raw response: {raw_response}")
-            print(f"DEBUG: Raw response type: {type(raw_response)}")
             
             if raw_response is None:
-                print("DEBUG: Search chain returned None")
                 # Return a default SearchResult
                 return SearchResult(
                     summary="No results found for the query.",
@@ -367,7 +497,6 @@ class CourtRAGChains:
                 )
                 
             except (json.JSONDecodeError, KeyError) as e:
-                print(f"DEBUG: JSON parsing error: {e}")
                 # Return a fallback SearchResult
                 return SearchResult(
                     summary=f"Response parsing failed: {str(raw_response)[:500]}",
@@ -379,7 +508,6 @@ class CourtRAGChains:
                 )
             
         except Exception as e:
-            print(f"DEBUG: Error in invoke: {e}")
             # Return a default SearchResult on error
             return SearchResult(
                 summary=f"Error processing query: {str(e)}",
@@ -416,7 +544,6 @@ class CourtRAGChains:
             return result
             
         except Exception as e:
-            print(f"DEBUG: Error in ainvoke: {e}")
             # Return a default SearchResult on error
             return SearchResult(
                 summary=f"Error processing query: {str(e)}",
@@ -432,12 +559,9 @@ class CourtRAGChains:
             self._apply_filters(filters)
         
         # Invoke the complete pipeline
-        print(f"DEBUG: Invoking search chain with query: {query}")
         result = self.complete_pipeline.invoke(query)
-        print(f"DEBUG: Search chain result: {result}")
         
         if result is None:
-            print("DEBUG: Search chain returned None")
             # Return a default SearchResult
             return SearchResult(
                 summary="No results found for the query.",
@@ -455,12 +579,9 @@ class CourtRAGChains:
             self._apply_filters(filters)
         
         # Invoke the complete pipeline
-        print(f"DEBUG: Invoking search chain with query: {query}")
         result = self.complete_pipeline.invoke(query)
-        print(f"DEBUG: Search chain result: {result}")
         
         if result is None:
-            print("DEBUG: Search chain returned None")
             # Return a default SearchResult
             return SearchResult(
                 summary="No results found for the query.",
@@ -501,6 +622,8 @@ def create_rag_chains(
     database_url: str,
     collection_name: str = "supreme_court_docs",
     enable_validation: bool = False,
+    use_redis_store: bool = True,
+    guardrails_validator: Optional[Any] = None
 ) -> CourtRAGChains:
     """
     Factory function to create configured RAG chains.
@@ -509,6 +632,8 @@ def create_rag_chains(
         database_url: PostgreSQL connection string
         collection_name: Vector store collection name
         enable_validation: Whether to enable claim validation
+        use_redis_store: Whether to use Redis for document persistence
+        guardrails_validator: Optional Guardrails validator instance
         
     Returns:
         Configured CourtRAGChains instance
@@ -537,5 +662,7 @@ def create_rag_chains(
         vector_store=vector_store,
         llm=llm,
         embeddings=embeddings,
-        enable_validation=enable_validation
+        enable_validation=enable_validation,
+        use_redis_store=use_redis_store,
+        guardrails_validator=guardrails_validator
     )
