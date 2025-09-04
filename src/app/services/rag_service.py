@@ -81,10 +81,15 @@ class RAGService:
             lc_filters = self._convert_filters(request.filters)
             
             # Execute RAG pipeline with timeout for PRD compliance
-            result = await asyncio.wait_for(
-                self.rag_chains.ainvoke(request.query, lc_filters),
-                timeout=settings.SEARCH_TIMEOUT_SECONDS
-            )
+            print(f"DEBUG: About to invoke RAG chains with query: {request.query}")
+            # Use synchronous invoke for now
+            result = self.rag_chains.invoke(request.query, lc_filters)
+            print(f"DEBUG: RAG chains result: {result}")
+            
+            # Check if result is None
+            if result is None:
+                print("DEBUG: RAG chains returned None")
+                raise RAGServiceError("RAG pipeline returned no results")
             
             # Calculate metrics
             metrics = self._calculate_metrics(start_time, result)
@@ -188,10 +193,12 @@ class RAGService:
         """Format LangChain result into API response."""
         return SearchResponse(
             query=request.query,
-            results=[result],  # Single result for now, can be extended
-            metrics=metrics,
+            results=[result.model_dump()],  # Convert to dict
+            metrics=metrics.model_dump(),   # Convert to dict
             timestamp=datetime.now(),
-            filters_applied=request.filters
+            filters_applied=request.filters,
+            total_results=1,  # Single result for now
+            has_more=False
         )
     
     async def _log_search_event(

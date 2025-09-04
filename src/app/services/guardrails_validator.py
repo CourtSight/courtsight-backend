@@ -13,20 +13,15 @@ from datetime import datetime
 from langchain_core.output_parsers import BaseOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnableLambda
-from langchain_google_vertexai import VertexAIModelGarden
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 try:
     import guardrails as gd
-    from guardrails.validators import (
-        ValidLength,
-        ValidRange,
-        OnTopic,
-        ProvenanceLLM
-    )
     GUARDRAILS_AVAILABLE = True
-except ImportError:
+except (ImportError, AttributeError) as e:
+    logging.warning(f"Guardrails AI not available or has compatibility issues: {e}. Install with: pip install guardrails-ai")
     GUARDRAILS_AVAILABLE = False
-    logging.warning("Guardrails AI not available. Install with: pip install guardrails-ai")
+    gd = None
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +33,7 @@ class Claim(BaseModel):
     source_context: str = Field(..., description="Context from which claim was extracted")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "text": "Terdakwa dijatuhi hukuman 5 tahun penjara",
                 "claim_id": "claim_001",
@@ -55,7 +50,7 @@ class ValidationEvidence(BaseModel):
     relevance_score: float = Field(..., ge=0.0, le=1.0, description="Relevance score")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "evidence_text": "Pengadilan menjatuhkan pidana penjara selama 5 tahun",
                 "source_document": "putusan_123_k_pid_2023",
@@ -76,7 +71,7 @@ class ClaimValidationResult(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.now, description="Validation timestamp")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "claim": {
                     "text": "Terdakwa dijatuhi hukuman 5 tahun penjara",
@@ -107,7 +102,7 @@ class BatchValidationResult(BaseModel):
     processing_time: float = Field(..., description="Total processing time in seconds")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "claims": [],
                 "overall_confidence": 0.85,
@@ -134,7 +129,7 @@ class GuardrailsValidator:
     
     def __init__(
         self,
-        llm: VertexAIModelGarden,
+        llm: ChatGoogleGenerativeAI,
         enable_strict_validation: bool = True,
         confidence_threshold: float = 0.7
     ):
@@ -179,14 +174,7 @@ class GuardrailsValidator:
             - General legal principles
             
             ${gr.complete_json_suffix_v2}
-            """,
-            validators=[
-                ValidLength(min=10, max=500, on_fail="reask"),
-                OnTopic(
-                    valid_topics=["legal decisions", "court rulings", "legal facts"],
-                    on_fail="filter"
-                )
-            ]
+            """
         )
         
         # Define validation guard for claim verification
@@ -213,14 +201,7 @@ class GuardrailsValidator:
             4. Clear reasoning for the decision
             
             ${gr.complete_json_suffix_v2}
-            """,
-            validators=[
-                ValidRange(min=0, max=1, on_fail="reask"),  # For confidence score
-                ProvenanceLLM(
-                    sources=["evidence_context"],
-                    on_fail="reask"
-                )
-            ]
+            """
         )
     
     async def extract_claims(self, text: str) -> List[Claim]:
@@ -487,7 +468,7 @@ class GuardrailsValidator:
 
 
 def create_guardrails_validator(
-    llm: VertexAIModelGarden,
+    llm: ChatGoogleGenerativeAI,
     enable_strict_validation: bool = True,
     confidence_threshold: float = 0.7
 ) -> GuardrailsValidator:

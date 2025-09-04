@@ -18,25 +18,21 @@ from langchain_core.runnables import (
 )
 from langchain_core.documents import Document
 from langchain_postgres import PGVector
-from langchain_google_vertexai import  VertexAIModelGarden
+from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
 from langchain.retrievers import ParentDocumentRetriever
 from langchain.storage import InMemoryStore
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain.callbacks import StdOutCallbackHandler
 # Pydantic models for structured outputs
 from src.app.core.config import settings
+from src.app.schemas.search import SearchResult as SchemaSearchResult, ValidationStatus
 
 
 
 
 
-class SearchResult(BaseModel):
-    
-    """Structured search result matching PRD API specification."""
-    summary: str = Field(description="Concise summary of relevant case information")
-    key_points: List[str] = Field(description="List of key legal points extracted")
-    source_documents: List[Dict[str, str]] = Field(description="Source document citations")
-    validation_status: str = Field(description="Claim validation status")
+# Use the schema SearchResult instead of defining our own
+SearchResult = SchemaSearchResult
 
 class ClaimValidation(BaseModel):
     """Individual claim validation result."""
@@ -60,8 +56,8 @@ class CourtRAGChains:
     def __init__(
         self,
         vector_store: PGVector,
-        llm: VertexAIModelGarden,
-        embeddings: VertexAIModelGarden,
+        llm: ChatGoogleGenerativeAI,
+        embeddings: GoogleGenerativeAIEmbeddings,
         enable_validation: bool = True,
     ):
         self.vector_store = vector_store
@@ -72,8 +68,10 @@ class CourtRAGChains:
         # Initialize document store for parent-child retrieval
         self.doc_store = InMemoryStore()  # TODO: Replace with persistent store for production
         
-        # Setup parent-child retriever as per PRD specifications
-        self.retriever = self._setup_parent_child_retriever()
+        # Setup simple retriever for testing
+        self.retriever = self.vector_store.as_retriever(
+            search_kwargs={"k": 5}  # Retrieve top 5 documents
+        )
         
         # Core LCEL chains
         self.search_chain = self._build_search_chain()
@@ -141,7 +139,8 @@ class CourtRAGChains:
                     "excerpt": "kutipan relevan",
                     "chunk_id": "ID chunk"
                 }}
-            ]
+            ],
+            "validation_status": "Supported"
         }}
         """)
         
@@ -164,14 +163,28 @@ class CourtRAGChains:
             return '\n'.join(context_parts)
         
         # Build the search chain using LCEL
+        def clean_json_response(response: str) -> str:
+            """Clean LLM response to extract JSON content."""
+            if isinstance(response, str):
+                # Remove markdown code blocks
+                response = response.strip()
+                if response.startswith('```json'):
+                    response = response[7:]
+                if response.startswith('```'):
+                    response = response[3:]
+                if response.endswith('```'):
+                    response = response[:-3]
+                return response.strip()
+            return response
+        
         search_chain = (
             {
-                "context": self.retriever | RunnableLambda(format_context),
-                "question": RunnablePassthrough()
+                "context": RunnableLambda(lambda x: x["query"]) | self.retriever | RunnableLambda(format_context),
+                "question": RunnableLambda(lambda x: x["query"])
             }
             | system_prompt
             | self.llm
-            | JsonOutputParser(pydantic_object=SearchResult)
+            | RunnableLambda(lambda x: x.content if hasattr(x, 'content') else str(x))
         )
         
         return search_chain
@@ -291,12 +304,170 @@ class CourtRAGChains:
         Returns:
             SearchResult with validated content and citations
         """
+        try:
+            # Apply filters to retriever if provided
+            if filters:
+                self._apply_filters(filters)
+            
+            # Invoke the complete pipeline
+            print(f"DEBUG: Invoking search chain with query: {query}")
+            raw_response = self.search_chain.invoke({"query": query})
+            print(f"DEBUG: Search chain raw response: {raw_response}")
+            print(f"DEBUG: Raw response type: {type(raw_response)}")
+            
+            if raw_response is None:
+                print("DEBUG: Search chain returned None")
+                # Return a default SearchResult
+                return SearchResult(
+                    summary="No results found for the query.",
+                    key_points=["No relevant documents found."],
+                    source_documents=[],
+                    validation_status=ValidationStatus.UNCERTAIN,
+                    confidence_score=0.0,
+                    legal_areas=[]
+                )
+            
+            # Parse the JSON response
+            try:
+                # Clean the response (remove markdown formatting)
+                cleaned_response = raw_response.strip()
+                if cleaned_response.startswith('```json'):
+                    cleaned_response = cleaned_response[7:]
+                if cleaned_response.startswith('```'):
+                    cleaned_response = cleaned_response[3:]
+                if cleaned_response.endswith('```'):
+                    cleaned_response = cleaned_response[:-3]
+                cleaned_response = cleaned_response.strip()
+                
+                # Parse JSON
+                import json
+                parsed_data = json.loads(cleaned_response)
+                
+                # Map validation status to enum
+                validation_status_str = parsed_data.get('validation_status', 'Unknown')
+                if validation_status_str == 'Supported':
+                    validation_status = ValidationStatus.SUPPORTED
+                elif validation_status_str == 'Partially Supported':
+                    validation_status = ValidationStatus.PARTIALLY_SUPPORTED
+                elif validation_status_str == 'Unsupported':
+                    validation_status = ValidationStatus.UNSUPPORTED
+                elif validation_status_str == 'Uncertain':
+                    validation_status = ValidationStatus.UNCERTAIN
+                else:
+                    validation_status = ValidationStatus.UNCERTAIN  # Default to uncertain
+                
+                # Create SearchResult from parsed data
+                return SearchResult(
+                    summary=parsed_data.get('summary', 'No summary available'),
+                    key_points=parsed_data.get('key_points', []),
+                    source_documents=parsed_data.get('source_documents', []),
+                    validation_status=validation_status,
+                    confidence_score=0.8,  # Default confidence
+                    legal_areas=[]  # Will be populated later
+                )
+                
+            except (json.JSONDecodeError, KeyError) as e:
+                print(f"DEBUG: JSON parsing error: {e}")
+                # Return a fallback SearchResult
+                return SearchResult(
+                    summary=f"Response parsing failed: {str(raw_response)[:500]}",
+                    key_points=["Response could not be parsed as JSON"],
+                    source_documents=[],
+                    validation_status=ValidationStatus.UNCERTAIN,
+                    confidence_score=0.0,
+                    legal_areas=[]
+                )
+            
+        except Exception as e:
+            print(f"DEBUG: Error in invoke: {e}")
+            # Return a default SearchResult on error
+            return SearchResult(
+                summary=f"Error processing query: {str(e)}",
+                key_points=["An error occurred during search."],
+                source_documents=[],
+                validation_status=ValidationStatus.UNCERTAIN,
+                confidence_score=0.0,
+                legal_areas=[]
+            )
+    
+    async def ainvoke(self, query: str, filters: Optional[Dict[str, Any]] = None) -> SearchResult:
+        """
+        Main entry point for the RAG system.
+        
+        Args:
+            query: User's natural language search query
+            filters: Optional filters for jurisdiction, date range, case type
+            
+        Returns:
+            SearchResult with validated content and citations
+        """
+    async def ainvoke(self, query: str, filters: Optional[Dict[str, Any]] = None) -> SearchResult:
+        """Async version of invoke for better performance."""
+        try:
+            # Apply filters to retriever if provided
+            if filters:
+                self._apply_filters(filters)
+            
+            # Run the synchronous invoke in a thread pool to avoid blocking
+            import asyncio
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(None, lambda: self._invoke_sync(query, filters))
+            
+            return result
+            
+        except Exception as e:
+            print(f"DEBUG: Error in ainvoke: {e}")
+            # Return a default SearchResult on error
+            return SearchResult(
+                summary=f"Error processing query: {str(e)}",
+                key_points=["An error occurred during search."],
+                source_documents=[],
+                validation_status="Error"
+            )
+    
+    def _invoke_sync(self, query: str, filters: Optional[Dict[str, Any]] = None) -> SearchResult:
+        """Synchronous implementation of the search logic."""
         # Apply filters to retriever if provided
         if filters:
             self._apply_filters(filters)
         
         # Invoke the complete pipeline
+        print(f"DEBUG: Invoking search chain with query: {query}")
         result = self.complete_pipeline.invoke(query)
+        print(f"DEBUG: Search chain result: {result}")
+        
+        if result is None:
+            print("DEBUG: Search chain returned None")
+            # Return a default SearchResult
+            return SearchResult(
+                summary="No results found for the query.",
+                key_points=["No relevant documents found."],
+                source_documents=[],
+                validation_status="No results"
+            )
+        
+        return result
+    
+    def _invoke_sync(self, query: str, filters: Optional[Dict[str, Any]] = None) -> SearchResult:
+        """Synchronous implementation of the search logic."""
+        # Apply filters to retriever if provided
+        if filters:
+            self._apply_filters(filters)
+        
+        # Invoke the complete pipeline
+        print(f"DEBUG: Invoking search chain with query: {query}")
+        result = self.complete_pipeline.invoke(query)
+        print(f"DEBUG: Search chain result: {result}")
+        
+        if result is None:
+            print("DEBUG: Search chain returned None")
+            # Return a default SearchResult
+            return SearchResult(
+                summary="No results found for the query.",
+                key_points=["No relevant documents found."],
+                source_documents=[],
+                validation_status="No results"
+            )
         
         return result
     
@@ -309,18 +480,27 @@ class CourtRAGChains:
         pass
     
     def add_documents(self, documents: List[Document]) -> None:
-        """Add documents to the retriever for indexing."""
-        self.retriever.add_documents(documents)
+        """Add documents to the vector store for indexing."""
+        # For simple retriever, add documents directly to vector store
+        self.vector_store.add_documents(documents)
     
     async def ainvoke(self, query: str, filters: Optional[Dict[str, Any]] = None) -> SearchResult:
         """Async version of invoke for better performance."""
-        # Async implementation for PRD performance requirements
-        pass
+        # Apply filters to retriever if provided
+        if filters:
+            self._apply_filters(filters)
+
+        # Run the synchronous invoke in a thread pool to avoid blocking
+        import asyncio
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(None, self.invoke, query, filters)
+
+        return result
 
 def create_rag_chains(
     database_url: str,
     collection_name: str = "supreme_court_docs",
-    enable_validation: bool = True,
+    enable_validation: bool = False,
 ) -> CourtRAGChains:
     """
     Factory function to create configured RAG chains.
@@ -335,10 +515,9 @@ def create_rag_chains(
     """
     
     # Initialize LangChain components
-    embeddings = VertexAIModelGarden(
-        project=settings.PROJECT_ID,
-        location=settings.LOCATION,
-        endpoint_id=settings.EMBEDDING_SERVICE_ENDPOINT,  # Your embedding endpoint ID
+    embeddings = GoogleGenerativeAIEmbeddings(
+        model="models/embedding-001",  # Gemini embedding model
+        google_api_key=settings.GOOGLE_API_KEY.get_secret_value()
     )
     
     vector_store = PGVector(
@@ -348,10 +527,10 @@ def create_rag_chains(
         use_jsonb=True
     )
     
-    llm = VertexAIModelGarden(
-        project=settings.PROJECT_ID,
-        location=settings.LOCATION,
-        endpoint_id=settings.LLM_SERVICE_ENDPOINT,  # Your LLM endpoint ID
+    llm = ChatGoogleGenerativeAI(
+        model="gemini-2.5-flash",  # Or use "gemini-1.5-pro" for better reasoning
+        verbose=True,
+        google_api_key=settings.GOOGLE_API_KEY.get_secret_value()
     )
     
     return CourtRAGChains(

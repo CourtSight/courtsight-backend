@@ -137,6 +137,7 @@ class VertexAISettings(BaseSettings):
     # Authentication
     GCLOUD_TOKEN: SecretStr = config("GCLOUD_TOKEN", cast=SecretStr)
     GOOGLE_APPLICATION_CREDENTIALS: str | None = config("GOOGLE_APPLICATION_CREDENTIALS", default=None)
+    GOOGLE_API_KEY: SecretStr = config("GOOGLE_API_KEY", cast=SecretStr, default="AIzaSyCBhxBMhS1Oe0S2NN4immDZdetZVwmLfy8")
     
     # API Keys for services
     EMBEDDING_SERVICE_API_KEY: str = config("EMBEDDING_SERVICE_API_KEY", default="embedding-service-dev-key")

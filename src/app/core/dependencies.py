@@ -1,5 +1,12 @@
 """
-Dependency injection system for Supreme Court RAG application.
+Dependency injefrom ..services.rag_service import RAGService, create_rag_service
+from ..services.rag.chains import CourtRAGChains, create_rag_chains
+from ..services.document_processor import DocumentProcessor, create_document_processor
+from ..services.guardrails_validator import GuardrailsValidator, create_guardrails_validator
+from ..services.evaluation import RAGEvaluator, create_rag_evaluator
+from ..core.db.database import async_get_db as async_get_db
+from ..models.user import User
+from ..crud.crud_users import crud_usersstem for Supreme Court RAG application.
 Implements clean architecture dependency patterns with proper
 lifecycle management and configuration injection.
 """
@@ -13,7 +20,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from langchain_google_vertexai import VertexAIModelGarden, VertexAIEmbeddings
+from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
 from langchain_postgres import PGVector
 
 from .config import Settings
@@ -22,9 +29,9 @@ from ..services.rag.chains import CourtRAGChains, create_rag_chains
 from ..services.document_processor import DocumentProcessor, create_document_processor
 from ..services.guardrails_validator import GuardrailsValidator, create_guardrails_validator
 from ..services.evaluation import RAGEvaluator, create_rag_evaluator
-from ..core.database import get_db_session
+from ..core.db.database import async_get_db
 from ..models.user import User
-from ..crud.user import get_user_by_id
+from ..crud.crud_users import crud_users
 
 logger = logging.getLogger(__name__)
 
@@ -43,35 +50,33 @@ def get_settings() -> Settings:
 # Database Dependencies
 async def get_database_session() -> AsyncGenerator[AsyncSession, None]:
     """Get database session with proper cleanup."""
-    async with get_db_session() as session:
+    async for session in async_get_db():
         try:
             yield session
         except Exception as e:
             logger.error(f"Database session error: {str(e)}")
-            await session.rollback()
             raise
         finally:
-            await session.close()
+            pass
 
 
 # LangChain Component Dependencies
 @lru_cache()
 def get_vertex_ai_embeddings(
     settings: Settings = Depends(get_settings)
-) -> VertexAIModelGarden:
+) -> GoogleGenerativeAIEmbeddings:
     """
-    Get configured VertexAI embeddings instance.
+    Get configured Gemini embeddings instance.
     
     Uses LRU cache to ensure single instance per application lifecycle.
     """
     try:
-        return VertexAIModelGarden(
-            project=settings.PROJECT_ID,
-            location=settings.LOCATION,
-            endpoint_id=settings.LLM_SERVICE_URL.split('/')[-2],  # Extract endpoint ID from URL
+        return GoogleGenerativeAIEmbeddings(
+            model="models/embedding-001",
+            google_api_key=settings.GOOGLE_API_KEY.get_secret_value()
         )
     except Exception as e:
-        logger.error(f"Failed to initialize VertexAI embeddings: {str(e)}")
+        logger.error(f"Failed to initialize Gemini embeddings: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Embedding service unavailable"
@@ -79,50 +84,48 @@ def get_vertex_ai_embeddings(
 
 
 @lru_cache()
-def get_vertex_ai_embeddings_direct() -> VertexAIEmbeddings:
-    """Get VertexAI embeddings instance directly (for testing)."""
+def get_vertex_ai_embeddings_direct() -> GoogleGenerativeAIEmbeddings:
+    """Get Gemini embeddings instance directly (for testing)."""
     settings = get_settings()
     try:
-        return VertexAIEmbeddings(
-            model_name=settings.EMBEDDINGS_MODEL,
-            project=settings.PROJECT_ID,
-            location=settings.LOCATION,
+        return GoogleGenerativeAIEmbeddings(
+            model="models/embedding-001",
+            google_api_key=settings.GOOGLE_API_KEY.get_secret_value()
         )
     except Exception as e:
-        logger.error(f"Failed to initialize VertexAI embeddings: {str(e)}")
+        logger.error(f"Failed to initialize Gemini embeddings: {str(e)}")
         raise
 
 
-def get_vertex_ai_llm_direct() -> VertexAIModelGarden:
-    """Get VertexAI LLM instance directly (for testing)."""
+def get_vertex_ai_llm_direct() -> ChatGoogleGenerativeAI:
+    """Get Gemini LLM instance directly (for testing)."""
     settings = get_settings()
     try:
-        return VertexAIModelGarden(
-            project=settings.PROJECT_ID,
-            location=settings.LOCATION,
-            endpoint_id=settings.LLM_SERVICE_URL.split('/')[-2],  # Extract endpoint ID from URL
+        return ChatGoogleGenerativeAI(
+            model="gemini-2.5-flash",
+            verbose=True,
+            google_api_key=settings.GOOGLE_API_KEY.get_secret_value()
         )
     except Exception as e:
-        logger.error(f"Failed to initialize VertexAI Model Garden LLM: {str(e)}")
+        logger.error(f"Failed to initialize Gemini LLM: {str(e)}")
         raise
 
 
 def get_vertex_ai_embeddings(
     settings: Settings = Depends(get_settings)
-) -> VertexAIEmbeddings:
+) -> GoogleGenerativeAIEmbeddings:
     """
-    Get configured VertexAI embeddings instance.
+    Get configured Gemini embeddings instance.
     
     Uses dependency injection for FastAPI integration.
     """
     try:
-        return VertexAIEmbeddings(
-            model_name=settings.EMBEDDINGS_MODEL,
-            project=settings.PROJECT_ID,
-            location=settings.LOCATION,
+        return GoogleGenerativeAIEmbeddings(
+            model="models/embedding-001",
+            google_api_key=settings.GOOGLE_API_KEY.get_secret_value()
         )
     except Exception as e:
-        logger.error(f"Failed to initialize VertexAI embeddings: {str(e)}")
+        logger.error(f"Failed to initialize Gemini embeddings: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Embeddings service unavailable"
@@ -131,37 +134,20 @@ def get_vertex_ai_embeddings(
 
 def get_vertex_ai_llm(
     settings: Settings = Depends(get_settings)
-) -> VertexAIModelGarden:
+) -> ChatGoogleGenerativeAI:
     """
-    Get configured VertexAI Model Garden LLM instance.
+    Get configured Gemini LLM instance.
     
     Uses dependency injection for FastAPI integration.
     """
     try:
-        return VertexAIModelGarden(
-            project=settings.PROJECT_ID,
-            location=settings.LOCATION,
-            endpoint_id=settings.LLM_SERVICE_URL.split('/')[-2],  # Extract endpoint ID from URL
+        return ChatGoogleGenerativeAI(
+            model="gemini-2.5-flash",
+            verbose=True,
+            google_api_key=settings.GOOGLE_API_KEY.get_secret_value()
         )
     except Exception as e:
-        logger.error(f"Failed to initialize VertexAI Model Garden LLM: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="LLM service unavailable"
-        )
-    """
-    Get configured VertexAI Model Garden LLM instance.
-    
-    Uses LRU cache to ensure single instance per application lifecycle.
-    """
-    try:
-        return VertexAIModelGarden(
-            project=settings.PROJECT_ID,
-            location=settings.LOCATION,
-            endpoint_id=settings.LLM_SERVICE_URL.split('/')[-2],  # Extract endpoint ID from URL
-        )
-    except Exception as e:
-        logger.error(f"Failed to initialize VertexAI Model Garden LLM: {str(e)}")
+        logger.error(f"Failed to initialize Gemini LLM: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="LLM service unavailable"
@@ -170,7 +156,7 @@ def get_vertex_ai_llm(
 
 @lru_cache()
 def get_vector_store(
-    embeddings: VertexAIModelGarden = Depends(get_vertex_ai_embeddings),
+    embeddings: GoogleGenerativeAIEmbeddings = Depends(get_vertex_ai_embeddings),
     settings: Settings = Depends(get_settings)
 ) -> PGVector:
     """
@@ -196,8 +182,8 @@ def get_vector_store(
 # Service Dependencies
 def get_rag_chains(
     vector_store: PGVector = Depends(get_vector_store),
-    llm: VertexAIModelGarden = Depends(get_vertex_ai_llm),
-    embeddings: VertexAIModelGarden = Depends(get_vertex_ai_embeddings),
+    llm: ChatGoogleGenerativeAI = Depends(get_vertex_ai_llm),
+    embeddings: GoogleGenerativeAIEmbeddings = Depends(get_vertex_ai_embeddings),
     settings: Settings = Depends(get_settings)
 ) -> CourtRAGChains:
     """Get configured RAG chains."""
@@ -232,7 +218,7 @@ def get_rag_service(
 
 def get_document_processor(
     vector_store: PGVector = Depends(get_vector_store),
-    embeddings: VertexAIModelGarden = Depends(get_vertex_ai_embeddings),
+    embeddings: GoogleGenerativeAIEmbeddings = Depends(get_vertex_ai_embeddings),
     settings: Settings = Depends(get_settings)
 ) -> DocumentProcessor:
     """Get configured document processor."""
@@ -251,7 +237,7 @@ def get_document_processor(
 
 
 def get_guardrails_validator(
-    llm: VertexAIModelGarden = Depends(get_vertex_ai_llm),
+    llm: ChatGoogleGenerativeAI = Depends(get_vertex_ai_llm),
     settings: Settings = Depends(get_settings)
 ) -> GuardrailsValidator:
     """Get configured Guardrails validator."""
@@ -321,7 +307,7 @@ async def get_current_user(
             )
         
         # Get user from database
-        user = await get_user_by_id(db, user_id=user_id)
+        user = await crud_users.get(db, id=user_id)
         if user is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,

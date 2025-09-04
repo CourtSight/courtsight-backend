@@ -3,9 +3,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --loop asyncio
     env_file:
-      - ./src/.env
+      - ./.env
     ports:
       - "8000:8000"
     depends_on:
@@ -13,7 +13,7 @@ services:
     volumes:
       # Mount source code for development with hot reload
       - ./src/app:/code/app
-      - ./src/.env:/code/.env  # Sync .env changes in real-time
+      - ./.env:/code/.env  # Sync .env changes in real-time
       - ./src/alembic.ini:/code/alembic.ini
       - ./src/migrations:/code/migrations
 
@@ -23,13 +23,13 @@ services:
       dockerfile: Dockerfile
     command: arq app.core.worker.settings.WorkerSettings
     env_file:
-      - ./src/.env
+      - ./.env
     depends_on:
       - redis
     volumes:
       # Mount source code for background worker
       - ./src/app:/code/app
-      - ./src/.env:/code/.env  # Sync .env changes in real-time
+      - ./.env:/code/.env  # Sync .env changes in real-time
       - ./src/alembic.ini:/code/alembic.ini
       - ./src/migrations:/code/migrations
 

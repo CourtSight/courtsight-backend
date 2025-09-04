@@ -20,7 +20,7 @@ from langchain_community.document_loaders import (
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain.storage import InMemoryStore
 from langchain.retrievers import ParentDocumentRetriever
-from langchain_google_vertexai import VertexAIModelGarden, VertexAIEmbeddings
+from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
 from langchain_postgres import PGVector
 from langchain_core.callbacks import CallbackManager, StdOutCallbackHandler
 from src.app.core.config import settings
@@ -56,7 +56,7 @@ class DocumentProcessor:
     def __init__(
         self,
         vector_store: PGVector,
-        embeddings: VertexAIEmbeddings,
+        embeddings: GoogleGenerativeAIEmbeddings,
         enable_metadata_extraction: bool = True,
         callback_manager: Optional[CallbackManager] = None
     ):
@@ -461,10 +461,9 @@ def create_document_processor(
         Configured DocumentProcessor instance
     """
     # Initialize embeddings
-    embeddings = VertexAIEmbeddings(
-        model_name=settings.EMBEDDING_MODEL_NAME,
-        project=settings.PROJECT_ID,
-        location=settings.LOCATION
+    embeddings = GoogleGenerativeAIEmbeddings(
+        model="models/embedding-001",
+        google_api_key=settings.GOOGLE_API_KEY.get_secret_value()
     )
     
     # Initialize vector store

@@ -22,7 +22,120 @@ from ...schemas.search import (
 )
 from ...models.user import User
 
-router = APIRouter(prefix="/api/v1/search", tags=["search"])
+router = APIRouter(tags=["search"])
+
+
+@router.post("/test", response_model=SearchResponse)
+async def test_search_supreme_court_documents(
+    request: SearchRequest,
+    background_tasks: BackgroundTasks,
+    rag_service: RAGService = Depends(create_rag_service)
+) -> SearchResponse:
+    """
+    Test search endpoint without authentication for testing Gemini models.
+    """
+    try:
+        # Create a mock user for testing
+        from ...models.user import User
+        mock_user = User(name="Test User", username="testuser", email="test@example.com", hashed_password="dummy")
+        # Set the id manually since it's init=False
+        mock_user.id = 1
+        
+        # Execute search through service layer
+        result = await rag_service.search_documents(
+            request=request,
+            user_id=mock_user.id
+        )
+        
+        return result
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Test search failed: {str(e)}")
+
+
+@router.post("/test/add-documents")
+async def test_add_documents(
+    rag_service: RAGService = Depends(create_rag_service)
+) -> dict:
+    """
+    Test endpoint to add sample documents without authentication.
+    """
+    try:
+        from langchain_core.documents import Document
+        
+        # Sample Indonesian court documents
+        sample_docs = [
+            Document(
+                page_content="""
+                PUTUSAN MAHKAMAH AGUNG REPUBLIK INDONESIA
+                Nomor: 129/Pid.B/2025/PN Mks
+                
+                MAHKAMAH AGUNG REPUBLIK INDONESIA
+                memutuskan dalam perkara korupsi pengadaan barang dan jasa:
+                
+                Menyatakan terdakwa Terdakwa I, Terdakwa II, dan Terdakwa III 
+                terbukti secara sah dan meyakinkan bersalah melakukan tindak pidana 
+                korupsi sebagaimana diatur dalam Pasal 2 ayat (1) jo Pasal 18 Undang-Undang 
+                Nomor 31 Tahun 1999 sebagaimana diubah dengan Undang-Undang Nomor 20 Tahun 2001 
+                tentang Pemberantasan Tindak Pidana Korupsi.
+                
+                Menjatuhkan pidana terhadap terdakwa masing-masing selama 5 (lima) tahun 
+                dan denda sebesar Rp. 250.000.000,- (dua ratus lima puluh juta rupiah) 
+                dengan ketentuan apabila denda tidak dibayar maka diganti dengan pidana 
+                kurungan selama 3 (tiga) bulan.
+                """,
+                metadata={
+                    "case_number": "129/Pid.B/2025/PN Mks",
+                    "title": "Putusan Korupsi Pengadaan Barang dan Jasa",
+                    "court_level": "supreme",
+                    "jurisdiction": "ID",
+                    "case_type": "criminal",
+                    "date": "2025-01-15"
+                }
+            ),
+            Document(
+                page_content="""
+                PUTUSAN MAHKAMAH AGUNG REPUBLIK INDONESIA
+                Nomor: 271/Pid.Sus/2025/PN Cjr
+                
+                MAHKAMAH AGUNG REPUBLIK INDONESIA
+                memutuskan dalam perkara tindak pidana pencucian uang:
+                
+                Menyatakan terdakwa Terdakwa A terbukti secara sah dan meyakinkan 
+                bersalah melakukan tindak pidana pencucian uang sebagaimana diatur 
+                dalam Pasal 3 Undang-Undang Nomor 8 Tahun 2010 tentang Pencegahan 
+                dan Pemberantasan Tindak Pidana Pencucian Uang.
+                
+                Menjatuhkan pidana terhadap terdakwa selama 4 (empat) tahun dan 
+                denda sebesar Rp. 1.000.000.000,- (satu miliar rupiah).
+                
+                Menyatakan barang bukti berupa uang tunai dan rekening bank 
+                dirampas untuk negara.
+                """,
+                metadata={
+                    "case_number": "271/Pid.Sus/2025/PN Cjr", 
+                    "title": "Putusan Pencucian Uang",
+                    "court_level": "supreme",
+                    "jurisdiction": "ID",
+                    "case_type": "criminal",
+                    "date": "2025-02-20"
+                }
+            )
+        ]
+        
+        result = await rag_service.add_documents_bulk(sample_docs)
+        
+        return {
+            "status": "success",
+            "message": "Test documents added successfully",
+            "result": result
+        }
+        
+    except Exception as e:
+        return {
+            "status": "error", 
+            "message": f"Failed to add test documents: {str(e)}"
+        }
 
 
 @router.post("/", response_model=SearchResponse)
