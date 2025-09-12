@@ -86,10 +86,6 @@ class SearchRequest(BaseModel):
         max_length=1000,
         description="Natural language search query"
     )
-    filters: Optional[SearchFilters] = Field(None, description="Optional search filters")
-    max_results: int = Field(10, ge=1, le=50, description="Maximum number of results")
-    include_summary: bool = Field(True, description="Include AI-generated summary")
-    include_validation: bool = Field(True, description="Include claim validation")
     
     @validator('query')
     def query_not_empty(cls, v):
@@ -113,6 +109,14 @@ class SearchRequest(BaseModel):
         }
 
 
+class ValidationStatus(str, Enum):
+    """Claim validation status categories."""
+    SUPPORTED = "Supported"
+    PARTIALLY_SUPPORTED = "Partially Supported"
+    UNSUPPORTED = "Unsupported"
+    UNCERTAIN = "Uncertain"
+
+
 class SourceDocument(BaseModel):
     """Source document citation information."""
     title: str = Field(..., description="Document title")
@@ -122,6 +126,9 @@ class SourceDocument(BaseModel):
     excerpt: str = Field(..., description="Relevant excerpt from document")
     chunk_id: str = Field(..., description="Unique chunk identifier")
     confidence_score: float = Field(0.0, ge=0.0, le=1.0, description="Relevance confidence")
+    validation_status: Optional[ValidationStatus] = Field(None, description="Document validation status")
+    relevance_score: Optional[float] = Field(None, ge=0.0, le=1.0, description="Relevance score from chain")
+    legal_areas: List[str] = Field(default_factory=list, description="Legal areas covered by document")
     
     class Config:
         json_schema_extra = {
@@ -131,17 +138,12 @@ class SourceDocument(BaseModel):
                 "date": "2023-05-15",
                 "excerpt": "Dalam perkara korupsi, terdakwa terbukti...",
                 "chunk_id": "doc_123_chunk_5",
-                "confidence_score": 0.85
+                "confidence_score": 0.85,
+                "validation_status": "Supported",
+                "relevance_score": 0.95,
+                "legal_areas": ["Hukum Pidana", "Tindak Pidana Korupsi"]
             }
         }
-
-
-class ValidationStatus(str, Enum):
-    """Claim validation status categories."""
-    SUPPORTED = "Supported"
-    PARTIALLY_SUPPORTED = "Partially Supported"
-    UNSUPPORTED = "Unsupported"
-    UNCERTAIN = "Uncertain"
 
 
 class SearchResult(BaseModel):
@@ -152,6 +154,8 @@ class SearchResult(BaseModel):
     validation_status: ValidationStatus = Field(..., description="Overall claim validation status")
     confidence_score: float = Field(0.0, ge=0.0, le=1.0, description="Overall confidence in result")
     legal_areas: List[str] = Field(default_factory=list, description="Relevant legal areas/topics")
+    related_queries: List[str] = Field(default_factory=list, description="Related query suggestions")
+    metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata from chain")
     
     class Config:
         json_schema_extra = {
@@ -168,12 +172,25 @@ class SearchResult(BaseModel):
                         "case_number": "123/K/Pid/2023",
                         "excerpt": "Terdakwa terbukti melakukan korupsi...",
                         "chunk_id": "doc_123_chunk_5",
-                        "confidence_score": 0.85
+                        "confidence_score": 0.85,
+                        "validation_status": "Supported",
+                        "relevance_score": 0.95,
+                        "legal_areas": ["Hukum Pidana", "Tindak Pidana Korupsi"]
                     }
                 ],
                 "validation_status": "Supported",
                 "confidence_score": 0.82,
-                "legal_areas": ["Hukum Pidana", "Tindak Pidana Korupsi"]
+                "legal_areas": ["Hukum Pidana", "Tindak Pidana Korupsi"],
+                "related_queries": [
+                    "sanksi pidana korupsi dana desa",
+                    "putusan kasasi korupsi"
+                ],
+                "metadata": {
+                    "total_documents_found": 5,
+                    "search_timestamp": "2024-10-01T12:00:00Z",
+                    "top_relevance_threshold": 0.8,
+                    "search_strategy": "semantic similarity + legal context matching"
+                }
             }
         }
 

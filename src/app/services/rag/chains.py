@@ -4,53 +4,69 @@ This module implements the core RAG pipeline using LCEL for optimal composabilit
 and monitoring as specified in the PRD requirements.
 """
 
-import os
 import logging
 from typing import List, Dict, Any, Optional
-from pydantic import BaseModel, Field
 
-from langchain_core.output_parsers import StrOutputParser, JsonOutputParser
-from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import (
-    RunnablePassthrough, 
-    RunnableParallel, 
     RunnableLambda,
     RunnableSequence
 )
 from langchain_core.documents import Document
 from langchain_postgres import PGVector
 from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
-from langchain.retrievers import ParentDocumentRetriever
-from langchain.storage import InMemoryStore
-from langchain_community.storage import RedisStore
-from redis import Redis
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain.callbacks import StdOutCallbackHandler
 # Pydantic models for structured outputs
-from src.app.core.config import settings
 from src.app.schemas.search import SearchResult as SchemaSearchResult, ValidationStatus
+from src.app.services.retrieval import RetrievalService, RetrievalStrategy, get_retrieval_service
+import json
+
+from src.app.services.llm_service import get_llm_service
 
 logger = logging.getLogger(__name__)
 
-
-
-
+def clean_json_response(response: str) -> str:
+    """
+    Comprehensive JSON cleaning function to handle LLM markdown responses.
+    Removes markdown code blocks and extracts pure JSON content.
+    """
+    if not isinstance(response, str):
+        return str(response)
+    
+    response = response.strip()
+    
+    # Remove markdown code blocks
+    if response.startswith('```json'):
+        response = response[7:]
+    elif response.startswith('```'):
+        response = response[3:]
+        
+    if response.endswith('```'):
+        response = response[:-3]
+        
+    response = response.strip()
+    
+    # Try to find JSON object if embedded in text
+    if '{' in response and '}' in response:
+        start = response.find('{')
+        
+        # Find matching closing brace
+        brace_count = 0
+        end = start
+        for i, char in enumerate(response[start:], start):
+            if char == '{':
+                brace_count += 1
+            elif char == '}':
+                brace_count -= 1
+                if brace_count == 0:
+                    end = i + 1
+                    break
+        
+        response = response[start:end]
+    
+    return response
 
 # Use the schema SearchResult instead of defining our own
 SearchResult = SchemaSearchResult
-
-class ClaimValidation(BaseModel):
-    """Individual claim validation result."""
-    claim: str = Field(description="The factual claim being validated")
-    status: str = Field(description="Supported/Partially Supported/Unsupported/Uncertain")
-    evidence: List[str] = Field(description="Supporting evidence from source documents")
-    source_chunks: List[str] = Field(description="Specific chunk IDs containing evidence")
-
-class ValidationResult(BaseModel):
-    """Complete validation result for all claims."""
-    claims: List[ClaimValidation] = Field(description="Individual claim validations")
-    overall_confidence: float = Field(description="Overall confidence score 0-1")
-    filtered_response: str = Field(description="Response with unsupported claims removed")
 
 class CourtRAGChains:
     """
@@ -63,68 +79,18 @@ class CourtRAGChains:
         vector_store: PGVector,
         llm: ChatGoogleGenerativeAI,
         embeddings: GoogleGenerativeAIEmbeddings,
-        enable_validation: bool = True,
-        use_redis_store: bool = True,
-        guardrails_validator: Optional[Any] = None
+        retrieval_strategy: RetrievalStrategy = RetrievalStrategy.VECTOR_SEARCH,
+        retrieval_service: Optional[RetrievalService] = None
     ):
         self.vector_store = vector_store
         self.llm = llm
         self.embeddings = embeddings
-        self.enable_validation = enable_validation
-        self.use_redis_store = use_redis_store
-        self.guardrails_validator = guardrails_validator
-        
-        # Initialize document store for parent-child retrieval
-        # Use Redis for production persistence
-        if self.use_redis_store:
-            try:
-                redis_client = Redis(
-                    host=settings.REDIS_CACHE_HOST,
-                    port=settings.REDIS_CACHE_PORT,
-                    decode_responses=True
-                )
-                self.doc_store = RedisStore(client=redis_client)
-                logger.info("Using Redis store for document persistence")
-            except Exception as e:
-                logger.warning(f"Failed to connect to Redis, falling back to InMemoryStore: {str(e)}")
-                self.doc_store = InMemoryStore()
-        else:
-            self.doc_store = InMemoryStore()
-        
-        # Setup simple retriever for testing
-        self.retriever = self._setup_parent_child_retriever()
-        
+        self.retrieval_strategy = retrieval_strategy
+        self.retrieval_service = retrieval_service
+
         # Core LCEL chains
         self.search_chain = self._build_search_chain()
-        self.validation_chain = self._build_validation_chain() if enable_validation else None
-        self.complete_pipeline = self._build_complete_pipeline()
-    
-    def _setup_parent_child_retriever(self) -> ParentDocumentRetriever:
-        """
-        Setup parent-child retriever with PRD-specified chunk sizes:
-        - Child chunks: 400 characters for precise search
-        - Parent documents: 2000 characters for full context
-        """
-        parent_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=2000,  # PRD specification
-            chunk_overlap=200,
-            separators=["\n\n", "\n", ".", " ", ""]
-        )
-        
-        child_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=400,   # PRD specification
-            chunk_overlap=50,
-            separators=["\n\n", "\n", ".", " ", ""]
-        )
-        
-        return ParentDocumentRetriever(
-            vectorstore=self.vector_store,
-            docstore=self.doc_store,
-            child_splitter=child_splitter,
-            parent_splitter=parent_splitter,
-            search_kwargs={"k": 10}  # Retrieve top 10 child chunks
-        )
-    
+ 
     def _build_search_chain(self) -> RunnableSequence:
         """
         Build the core search and generation chain using LCEL.
@@ -170,13 +136,14 @@ class CourtRAGChains:
             }}
             ],
             "confidence_score": 0.85,
+            "legal_areas": ["Area hukum utama 1", "Area hukum utama 2"],
             "related_queries": ["Saran query pencarian terkait 1", "Saran query pencarian terkait 2"],
             "metadata": {{
-            "total_documents_found": 5,
-            "search_timestamp": "2024-10-01T12:00:00Z",
-            "top_relevance_threshold": 0.8,
-            "search_strategy": "semantic similarity + legal context matching"
-            "disclaimer": "Hasil berdasarkan dokumen tersedia; konsultasikan ahli hukum untuk nasihat profesional"
+                "total_documents_found": 5,
+                "search_timestamp": "2024-10-01T12:00:00Z",
+                "top_relevance_threshold": 0.8,
+                "search_strategy": "semantic similarity + legal context matching",
+                "disclaimer": "Hasil berdasarkan dokumen tersedia; konsultasikan ahli hukum untuk nasihat profesional"
             }}
         }}
         
@@ -203,230 +170,139 @@ class CourtRAGChains:
                     f"{'='*50}\n"
                 )
             return '\n'.join(context_parts)
-        
-        # Build the search chain using LCEL
-        def clean_json_response(response: str) -> str:
-            """Clean LLM response to extract JSON content."""
-            if isinstance(response, str):
-                # Remove markdown code blocks
-                response = response.strip()
-                if response.startswith('```json'):
-                    response = response[7:]
-                if response.startswith('```'):
-                    response = response[3:]
-                if response.endswith('```'):
-                    response = response[:-3]
-                return response.strip()
-            return response
-        
+         
+        # Custom JSON parsing function with error handling
+        def safe_json_parse(response: str) -> Dict[str, Any]:
+            """Safely parse JSON with comprehensive cleaning and fallbacks"""
+            try:
+                # Clean the response first
+                cleaned = clean_json_response(response)
+                
+                # Parse JSON
+                parsed = json.loads(cleaned)
+                
+                # Validate required fields exist
+                required_fields = ['summary', 'key_points', 'source_documents', 'confidence_score', 'legal_areas']
+                for field in required_fields:
+                    if field not in parsed:
+                        logger.warning(f"Missing required field: {field}")
+                        if field == 'summary':
+                            parsed[field] = "Ringkasan tidak tersedia"
+                        elif field == 'key_points':
+                            parsed[field] = []
+                        elif field == 'source_documents':
+                            parsed[field] = []
+                        elif field == 'confidence_score':
+                            parsed[field] = 0.5
+                        elif field == 'legal_areas':
+                            parsed[field] = []
+                
+                # Ensure optional fields have defaults
+                if 'related_queries' not in parsed:
+                    parsed['related_queries'] = []
+                if 'metadata' not in parsed:
+                    parsed['metadata'] = None
+                
+                return parsed
+                
+            except json.JSONDecodeError as e:
+                logger.error(f"JSON parsing failed: {e}")
+                logger.error(f"Failed response: {response[:500]}...")
+                
+                # Return fallback structure
+                return {
+                    "summary": f"JSON parsing failed: {str(e)}. Raw response: {response[:200]}...",
+                    "key_points": ["Response could not be parsed as JSON"],
+                    "source_documents": [],
+                    "confidence_score": 0.0,
+                    "legal_areas": [],
+                    "related_queries": [],
+                    "metadata": {
+                        "error": str(e),
+                        "raw_response_preview": response[:200]
+                    }
+                }
+            except Exception as e:
+                logger.error(f"Unexpected error in JSON parsing: {e}")
+                return {
+                    "summary": f"Unexpected parsing error: {str(e)}",
+                    "key_points": ["Parsing error occurred"],
+                    "source_documents": [],
+                    "confidence_score": 0.0,
+                    "legal_areas": [],
+                    "related_queries": [],
+                    "metadata": {"error": str(e)}
+                }
+
+        # Retrieval function that handles async properly
+        def retrieve_documents(query_dict: Dict[str, str]) -> List[Document]:
+            """Synchronous wrapper for async retrieval."""
+            try:
+                query = query_dict.get("query", "")
+                
+                # If we have a retrieval service, use it
+                if self.retrieval_service:
+                    import asyncio
+                    try:
+                        loop = asyncio.get_event_loop()
+                        if loop.is_running():
+                            # We're in an async context, can't use run_until_complete
+                            # Fall back to vector store retrieval
+                            return self._fallback_retrieval(query)
+                        else:
+                            return loop.run_until_complete(
+                                self.retrieval_service.retrieve(
+                                    query=query,
+                                    strategy=self.retrieval_strategy,
+                                    top_k=5
+                                )
+                            )
+                    except RuntimeError:
+                        # Loop is already running, use fallback
+                        return self._fallback_retrieval(query)
+                else:
+                    # Use fallback retrieval
+                    return self._fallback_retrieval(query)
+                    
+            except Exception as e:
+                logger.error(f"Document retrieval failed: {e}")
+                return self._fallback_retrieval(query_dict.get("query", ""))
+
         search_chain = (
             {
-                "context": RunnableLambda(lambda x: x["query"]) | self.retriever | RunnableLambda(format_context),
+                "context": RunnableLambda(lambda x: {"query": x["query"]}) 
+                | RunnableLambda(retrieve_documents) 
+                | RunnableLambda(format_context),
                 "question": RunnableLambda(lambda x: x["query"])
             }
             | system_prompt
             | self.llm
             | RunnableLambda(lambda x: x.content if hasattr(x, 'content') else str(x))
+            | RunnableLambda(safe_json_parse)
         )
         
         return search_chain
     
-    def _build_validation_chain(self) -> RunnableSequence:
-        """
-        Build claim validation chain using Guardrails validator.
-        Implements PRD requirement for factual claim verification.
-        """
-        
-        if self.guardrails_validator:
-            # Use the injected Guardrails validator
-            def validate_with_guardrails(data: Dict[str, Any]) -> ValidationResult:
-                """Validate claims using Guardrails validator."""
-                try:
-                    response = data.get("response", "")
-                    context_docs = data.get("context", [])
-                    
-                    # Format context documents for guardrails
-                    evidence_documents = []
-                    if isinstance(context_docs, list):
-                        for doc in context_docs:
-                            if hasattr(doc, 'page_content'):
-                                evidence_documents.append({
-                                    'source': getattr(doc, 'metadata', {}).get('source', 'unknown'),
-                                    'content': doc.page_content
-                                })
-                    
-                    # Use guardrails validator to validate the response
-                    validation_result = self.guardrails_validator.validate_batch(
-                        text=response,
-                        evidence_documents=evidence_documents
-                    )
-                    
-                    # Convert to our ValidationResult format
-                    claims = []
-                    for claim_result in validation_result.claims:
-                        claims.append(ClaimValidation(
-                            claim=claim_result.claim.text,
-                            status=claim_result.status,
-                            evidence=[ev.evidence_text for ev in claim_result.evidence],
-                            source_chunks=[ev.chunk_id for ev in claim_result.evidence]
-                        ))
-                    
-                    return ValidationResult(
-                        claims=claims,
-                        overall_confidence=validation_result.overall_confidence,
-                        filtered_response=validation_result.filtered_text
-                    )
-                    
-                except Exception as e:
-                    logger.error(f"Guardrails validation failed: {str(e)}")
-                    # Fallback to basic validation
-                    return ValidationResult(
-                        claims=[],
-                        overall_confidence=0.5,
-                        filtered_response=data.get("response", "")
-                    )
+    def _fallback_retrieval(self, query: str) -> List[Document]:
+        """Fallback retrieval using vector store directly."""
+        try:
+            # Build search kwargs
+            search_kwargs = {"k": 5}
             
-            validation_chain = RunnableLambda(validate_with_guardrails)
+            # Apply filters if they exist
+            if hasattr(self, '_current_filters') and self._current_filters:
+                search_kwargs["filter"] = self._current_filters
             
-        else:
-            # Fallback to basic LLM-based validation
-            # Claim extraction prompt
-            extraction_prompt = ChatPromptTemplate.from_template("""
-            Ekstrak semua klaim faktual dari respon berikut yang dapat diverifikasi:
-            
-            RESPON: {response}
-            
-            Identifikasi klaim-klaim spesifik yang dapat dicek kebenarannya terhadap dokumen sumber.
-            Berikan dalam format JSON:
-            {{
-                "claims": ["klaim 1", "klaim 2", ...]
-            }}
-            """)
-            
-            # Claim verification prompt
-            verification_prompt = ChatPromptTemplate.from_template("""
-            Verifikasi setiap klaim berikut terhadap konteks dokumen yang tersedia:
-            
-            KLAIM YANG AKAN DIVERIFIKASI:
-            {claims}
-            
-            KONTEKS DOKUMEN:
-            {context}
-            
-            Untuk setiap klaim, tentukan status validasi:
-            - "Supported": Klaim didukung penuh oleh bukti dalam dokumen
-            - "Partially Supported": Klaim didukung sebagian dengan beberapa ketidakpastian  
-            - "Unsupported": Klaim tidak didukung atau bertentangan dengan dokumen
-            - "Uncertain": Tidak cukup informasi untuk memverifikasi
-            
-            Berikan hasil dalam format JSON:
-            {{
-                "claims": [
-                    {{
-                        "claim": "teks klaim",
-                        "status": "Supported/Partially Supported/Unsupported/Uncertain",
-                        "evidence": ["bukti 1", "bukti 2"],
-                        "source_chunks": ["chunk_id_1", "chunk_id_2"]
-                    }}
-                ],
-                "overall_confidence": 0.85,
-                "filtered_response": "respon yang telah difilter"
-            }}
-            """)
-            
-            # Claim extraction chain
-            extract_claims = (
-                extraction_prompt
-                | self.llm
-                | JsonOutputParser()
-            )
-            
-            # Verification chain
-            verify_claims = (
-                verification_prompt
-                | self.llm  
-                | JsonOutputParser(pydantic_object=ValidationResult)
-            )
-            
-            # Complete validation pipeline
-            validation_chain = (
-                {
-                    "claims": RunnableLambda(lambda x: extract_claims.invoke({"response": x["response"]})),
-                    "context": RunnableLambda(lambda x: x["context"])
-                }
-                | verify_claims
-            )
-        
-        return validation_chain
+            # Use vector store as fallback
+            docs = self.retrieval_service.retrieve(query=query, strategy=RetrievalStrategy.VECTOR_SEARCH, top_k=5)
+            # retr
+            logger.info(f"Fallback retrieval returned {len(docs)} documents")
+            return docs
+        except Exception as e:
+            logger.error(f"Fallback retrieval failed: {e}")
+            return []
     
-    def _build_complete_pipeline(self) -> RunnableSequence:
-        """
-        Build the complete RAG pipeline with optional validation.
-        This is the main entry point for the search functionality.
-        """
-        
-        if self.validation_chain:
-            # Pipeline with validation
-            complete_pipeline = (
-                self.search_chain
-                | RunnableLambda(lambda result: {
-                    "response": result,
-                    "context": self.retriever.invoke(result.get("question", ""))
-                })
-                | self.validation_chain
-                | RunnableLambda(self._merge_results)
-            )
-        else:
-            # Pipeline without validation
-            complete_pipeline = self.search_chain | RunnableLambda(lambda x: x)
-            # Simple pipeline without validation --- IGNORE ---
-            # complete_pipeline = self.search_chain --- IGNORE ---
-         # --- IGNORE ---
-        return complete_pipeline
-    
-    def _merge_results(self, validation_result: Dict[str, Any]) -> SearchResult:
-        """
-        Merge search results with validation results.
-        Combines the filtered response from validation with claim statuses to create a validated SearchResult.
-        """
-        # Extract data from validation result
-        claims = validation_result.get('claims', [])
-        overall_confidence = validation_result.get('overall_confidence', 0.0)
-        filtered_response = validation_result.get('filtered_response', '')
-        
-        # Use filtered response as summary
-        summary = filtered_response
-        
-        # Extract supported claims as key points
-        key_points = [
-            claim['claim'] for claim in claims 
-            if claim.get('status') in ['Supported', 'Partially Supported']
-        ]
-        
-        # For source_documents, collect unique source chunks (document details not available in validation result)
-        # In a full implementation, you'd need to pass original context or retrieve documents by chunk_id
-        source_documents = []  # Placeholder - requires additional context to populate properly
-        
-        # Determine overall validation status based on confidence
-        if overall_confidence >= 0.8:
-            validation_status = ValidationStatus.SUPPORTED
-        elif overall_confidence >= 0.5:
-            validation_status = ValidationStatus.PARTIALLY_SUPPORTED
-        elif overall_confidence > 0.0:
-            validation_status = ValidationStatus.UNSUPPORTED
-        else:
-            validation_status = ValidationStatus.UNCERTAIN
-        
-        # Create and return SearchResult
-        return SearchResult(
-            summary=summary,
-            key_points=key_points,
-            source_documents=source_documents,
-            validation_status=validation_status,
-            confidence_score=overall_confidence,
-            legal_areas=[]  # Not available from validation result
-        )
-    
+
     def invoke(self, query: str, filters: Optional[Dict[str, Any]] = None) -> SearchResult:
         """
         Main entry point for the RAG system.
@@ -443,10 +319,10 @@ class CourtRAGChains:
             if filters:
                 self._apply_filters(filters)
             
-            # Invoke the complete pipeline
-            raw_response = self.search_chain.invoke({"query": query})
-            
-            if raw_response is None:
+            # Invoke the complete pipeline - now returns parsed JSON dict
+            parsed_response = self.search_chain.invoke({"query": query})
+
+            if parsed_response is None:
                 # Return a default SearchResult
                 return SearchResult(
                     summary="No results found for the query.",
@@ -457,57 +333,33 @@ class CourtRAGChains:
                     legal_areas=[]
                 )
             
-            # Parse the JSON response
-            try:
-                # Clean the response (remove markdown formatting)
-                cleaned_response = raw_response.strip()
-                if cleaned_response.startswith('```json'):
-                    cleaned_response = cleaned_response[7:]
-                if cleaned_response.startswith('```'):
-                    cleaned_response = cleaned_response[3:]
-                if cleaned_response.endswith('```'):
-                    cleaned_response = cleaned_response[:-3]
-                cleaned_response = cleaned_response.strip()
-                
-                # Parse JSON
-                import json
-                parsed_data = json.loads(cleaned_response)
-                
-                # Map validation status to enum
-                validation_status_str = parsed_data.get('validation_status', 'Unknown')
-                if validation_status_str == 'Supported':
-                    validation_status = ValidationStatus.SUPPORTED
-                elif validation_status_str == 'Partially Supported':
-                    validation_status = ValidationStatus.PARTIALLY_SUPPORTED
-                elif validation_status_str == 'Unsupported':
-                    validation_status = ValidationStatus.UNSUPPORTED
-                elif validation_status_str == 'Uncertain':
-                    validation_status = ValidationStatus.UNCERTAIN
-                else:
-                    validation_status = ValidationStatus.UNCERTAIN  # Default to uncertain
-                
-                # Create SearchResult from parsed data
-                return SearchResult(
-                    summary=parsed_data.get('summary', 'No summary available'),
-                    key_points=parsed_data.get('key_points', []),
-                    source_documents=parsed_data.get('source_documents', []),
-                    validation_status=validation_status,
-                    confidence_score=0.8,  # Default confidence
-                    legal_areas=[]  # Will be populated later
-                )
-                
-            except (json.JSONDecodeError, KeyError) as e:
-                # Return a fallback SearchResult
-                return SearchResult(
-                    summary=f"Response parsing failed: {str(raw_response)[:500]}",
-                    key_points=["Response could not be parsed as JSON"],
-                    source_documents=[],
-                    validation_status=ValidationStatus.UNCERTAIN,
-                    confidence_score=0.0,
-                    legal_areas=[]
-                )
+            # Extract validation status from source documents if available
+            validation_status = ValidationStatus.UNCERTAIN
+            if parsed_response.get('source_documents'):
+                # Get validation status from first document or use default logic
+                first_doc = parsed_response['source_documents'][0]
+                if isinstance(first_doc, dict) and 'validation_status' in first_doc:
+                    status_str = first_doc['validation_status']
+                    if status_str == 'Supported':
+                        validation_status = ValidationStatus.SUPPORTED
+                    elif status_str == 'Partially Supported':
+                        validation_status = ValidationStatus.PARTIALLY_SUPPORTED
+                    elif status_str == 'Unsupported':
+                        validation_status = ValidationStatus.UNSUPPORTED
             
+            # Create SearchResult from parsed data
+            return SearchResult(
+                summary=parsed_response.get('summary', 'No summary available'),
+                key_points=parsed_response.get('key_points', []),
+                source_documents=parsed_response.get('source_documents', []),
+                validation_status=validation_status,
+                confidence_score=parsed_response.get('confidence_score', 0.5),
+                legal_areas=parsed_response.get('legal_areas', []),
+                related_queries=parsed_response.get('related_queries', []),
+                metadata=parsed_response.get('metadata')
+            )
         except Exception as e:
+            logger.error(f"Error in invoke method: {str(e)}")
             # Return a default SearchResult on error
             return SearchResult(
                 summary=f"Error processing query: {str(e)}",
@@ -515,9 +367,11 @@ class CourtRAGChains:
                 source_documents=[],
                 validation_status=ValidationStatus.UNCERTAIN,
                 confidence_score=0.0,
-                legal_areas=[]
+                legal_areas=[],
+                related_queries=[],
+                metadata=None
             )
-    
+   
     async def ainvoke(self, query: str, filters: Optional[Dict[str, Any]] = None) -> SearchResult:
         """
         Main entry point for the RAG system.
@@ -529,8 +383,6 @@ class CourtRAGChains:
         Returns:
             SearchResult with validated content and citations
         """
-    async def ainvoke(self, query: str, filters: Optional[Dict[str, Any]] = None) -> SearchResult:
-        """Async version of invoke for better performance."""
         try:
             # Apply filters to retriever if provided
             if filters:
@@ -549,7 +401,11 @@ class CourtRAGChains:
                 summary=f"Error processing query: {str(e)}",
                 key_points=["An error occurred during search."],
                 source_documents=[],
-                validation_status="Error"
+                validation_status=ValidationStatus.UNCERTAIN,
+                confidence_score=0.0,
+                legal_areas=[],
+                related_queries=[],
+                metadata=None
             )
     
     def _invoke_sync(self, query: str, filters: Optional[Dict[str, Any]] = None) -> SearchResult:
@@ -558,51 +414,86 @@ class CourtRAGChains:
         if filters:
             self._apply_filters(filters)
         
-        # Invoke the complete pipeline
-        result = self.complete_pipeline.invoke(query)
-        
-        if result is None:
+        # Invoke the complete pipeline - now returns parsed JSON dict
+        parsed_response = self.search_chain.invoke({"query": query})
+
+        if parsed_response is None:
             # Return a default SearchResult
             return SearchResult(
                 summary="No results found for the query.",
                 key_points=["No relevant documents found."],
                 source_documents=[],
-                validation_status="No results"
+                validation_status=ValidationStatus.UNCERTAIN,
+                confidence_score=0.0,
+                legal_areas=[],
+                related_queries=[],
+                metadata=None
             )
         
-        return result
-    
-    def _invoke_sync(self, query: str, filters: Optional[Dict[str, Any]] = None) -> SearchResult:
-        """Synchronous implementation of the search logic."""
-        # Apply filters to retriever if provided
-        if filters:
-            self._apply_filters(filters)
+        # Extract validation status from source documents if available
+        validation_status = ValidationStatus.UNCERTAIN
+        if parsed_response.get('source_documents'):
+            # Get validation status from first document or use default logic
+            first_doc = parsed_response['source_documents'][0]
+            if isinstance(first_doc, dict) and 'validation_status' in first_doc:
+                status_str = first_doc['validation_status']
+                if status_str == 'Supported':
+                    validation_status = ValidationStatus.SUPPORTED
+                elif status_str == 'Partially Supported':
+                    validation_status = ValidationStatus.PARTIALLY_SUPPORTED
+                elif status_str == 'Unsupported':
+                    validation_status = ValidationStatus.UNSUPPORTED
         
-        # Invoke the complete pipeline
-        result = self.complete_pipeline.invoke(query)
-        
-        if result is None:
-            # Return a default SearchResult
-            return SearchResult(
-                summary="No results found for the query.",
-                key_points=["No relevant documents found."],
-                source_documents=[],
-                validation_status="No results"
-            )
-        
-        return result
-    
+        # Create SearchResult from parsed data
+        return SearchResult(
+            summary=parsed_response.get('summary', 'No summary available'),
+            key_points=parsed_response.get('key_points', []),
+            source_documents=parsed_response.get('source_documents', []),
+            validation_status=validation_status,
+            confidence_score=parsed_response.get('confidence_score', 0.5),
+            legal_areas=parsed_response.get('legal_areas', []),
+            related_queries=parsed_response.get('related_queries', []),
+            metadata=parsed_response.get('metadata')
+        )
+
     def _apply_filters(self, filters: Dict[str, Any]) -> None:
         """Apply search filters to the retriever."""
-        # Implementation for PRD filter requirements:
-        # - jurisdiction filtering
-        # - date range filtering  
-        # - case type filtering
-        pass
+        # Extract supported filter types from PRD requirements
+        jurisdiction_filter = filters.get('jurisdiction')
+        date_range_filter = filters.get('date_range') 
+        case_type_filter = filters.get('case_type')
+        
+        # Build metadata filter dict for vector store
+        metadata_filters = {}
+        
+        if jurisdiction_filter:
+            # Map jurisdiction to metadata field
+            metadata_filters['jurisdiction'] = jurisdiction_filter
+        
+        if date_range_filter:
+            # Handle date range filtering
+            if isinstance(date_range_filter, dict):
+                if 'start_date' in date_range_filter:
+                    metadata_filters['date_gte'] = date_range_filter['start_date']
+                if 'end_date' in date_range_filter:
+                    metadata_filters['date_lte'] = date_range_filter['end_date']
+        
+        if case_type_filter:
+            # Filter by case type (e.g., civil, criminal, administrative)
+            metadata_filters['case_type'] = case_type_filter
+        
+        # Apply filters to vector store retriever if it supports metadata filtering
+        if hasattr(self.vector_store, 'as_retriever'):
+            # Note: Filters will be applied during retrieval in _fallback_retrieval
+            # Store filters for later use
+            self._current_filters = metadata_filters
+        else:
+            # Log warning if filtering not supported
+            logger.warning(f"Vector store doesn't support metadata filtering. Filters ignored: {filters}")
     
     def add_documents(self, documents: List[Document]) -> None:
         """Add documents to the vector store for indexing."""
-        # For simple retriever, add documents directly to vector store
+        # Add documents directly to vector store
         self.vector_store.add_documents(documents)
     
     async def ainvoke(self, query: str, filters: Optional[Dict[str, Any]] = None) -> SearchResult:
@@ -618,51 +509,40 @@ class CourtRAGChains:
 
         return result
 
+
 def create_rag_chains(
     database_url: str,
-    collection_name: str = "supreme_court_docs",
-    enable_validation: bool = False,
-    use_redis_store: bool = True,
-    guardrails_validator: Optional[Any] = None
+    collection_name: str = "ma_putusan_pc_chunks",
+    retrieval_strategy: RetrievalStrategy = RetrievalStrategy.VECTOR_SEARCH,
 ) -> CourtRAGChains:
     """
-    Factory function to create configured RAG chains.
+    Async factory function to create configured RAG chains with retrieval service.
     
     Args:
         database_url: PostgreSQL connection string
         collection_name: Vector store collection name
-        enable_validation: Whether to enable claim validation
-        use_redis_store: Whether to use Redis for document persistence
-        guardrails_validator: Optional Guardrails validator instance
+        retrieval_strategy: Strategy for document retrieval
         
     Returns:
         Configured CourtRAGChains instance
     """
-    
-    # Initialize LangChain components
-    embeddings = GoogleGenerativeAIEmbeddings(
-        model="models/embedding-001",  # Gemini embedding model
-        google_api_key=settings.GOOGLE_API_KEY.get_secret_value()
-    )
-    
+    llm_service = get_llm_service()
+    retrieval_service = get_retrieval_service()
+
+    embeddings = llm_service.embeddings
+
     vector_store = PGVector(
         embeddings=embeddings,
         collection_name=collection_name,
         connection=database_url,
-        use_jsonb=True
     )
     
-    llm = ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash",  # Or use "gemini-1.5-pro" for better reasoning
-        verbose=True,
-        google_api_key=settings.GOOGLE_API_KEY.get_secret_value()
-    )
+    llm = llm_service.llm
     
     return CourtRAGChains(
         vector_store=vector_store,
         llm=llm,
         embeddings=embeddings,
-        enable_validation=enable_validation,
-        use_redis_store=use_redis_store,
-        guardrails_validator=guardrails_validator
+        retrieval_strategy=retrieval_strategy,
+        retrieval_service=retrieval_service
     )

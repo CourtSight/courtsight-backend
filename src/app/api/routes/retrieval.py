@@ -1,214 +1,235 @@
 """
-FastAPI routes for multimodal retrieval API endpoints.
-Provides retrieval-as-a-service for RAG, REACT agents, and multimodal models.
+Enhanced retrieval API routes using the new driven architecture service.
+Provides access to multiple retrieval strategies with unified interface.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from typing import Optional, List, Dict, Any
+from fastapi import APIRouter, Depends, HTTPException, Query, Body
+from typing import Optional, List, Dict, Any, Union
 from pydantic import BaseModel, Field
-from datetime import datetime
+from enum import Enum
+import logging
 
-from ...services.rag_service import RAGService, create_rag_service
+from ...services.retrieval import (
+    RetrievalStrategy, 
+    get_retrieval_service
+)
+from ...services.retrieval.service import (
+    search_with_retrieval_service,
+    multi_strategy_search,
+)
+
 from ...core.dependencies import get_current_user
-from ...schemas.search import SearchRequest, SearchFilters, DateRange
 from ...models.user import User
+
+logger = logging.getLogger(__name__)
+
 
 router = APIRouter(prefix="/api/v1/retrieval", tags=["retrieval"])
 
+# Request/Response Models
+class StrategyEnum(str, Enum):
+    """Available retrieval strategies."""
+    VECTOR_SEARCH = "vector_search"
+    PARENT_CHILD = "parent_child"
+    HYBRID = "hybrid"
 
-class RetrievalRequest(BaseModel):
-    """Request model for multimodal retrieval API."""
-    query: str = Field(..., description="The search query")
+
+class EnhancedRetrievalRequest(BaseModel):
+    """Enhanced retrieval request model."""
+    query: str = Field(..., description="Search query")
+    strategy: StrategyEnum = Field(
+        StrategyEnum.PARENT_CHILD, 
+        description="Retrieval strategy to use"
+    )
     top_k: int = Field(5, description="Number of documents to retrieve", ge=1, le=20)
     filters: Optional[Dict[str, Any]] = Field(None, description="Optional filters")
-    include_metadata: bool = Field(True, description="Include document metadata")
     include_scores: bool = Field(True, description="Include similarity scores")
-    context_window: int = Field(1000, description="Context window size in characters")
 
     class Config:
         json_schema_extra = {
             "example": {
-                "query": "putusan mahkamah agung tentang korupsi",
+                "query": "sanksi pidana korupsi",
+                "strategy": "parent_child",
                 "top_k": 5,
-                "filters": {
-                    "jurisdiction": "ID",
-                    "case_type": "criminal"
-                },
-                "include_metadata": True,
-                "include_scores": True,
-                "context_window": 1000
+                "filters": {"year": "2023"},
+                "include_scores": True
             }
         }
 
 
-class RetrievedDocument(BaseModel):
-    """Retrieved document model for API response."""
-    id: str = Field(..., description="Document unique identifier")
-    content: str = Field(..., description="Document content/chunk")
+class MultiStrategyRequest(BaseModel):
+    """Multi-strategy comparison request."""
+    query: str = Field(..., description="Search query")
+    strategies: List[StrategyEnum] = Field(
+        default=[StrategyEnum.VECTOR_SEARCH, StrategyEnum.PARENT_CHILD, StrategyEnum.HYBRID],
+        description="Strategies to compare"
+    )
+    top_k: int = Field(3, description="Documents per strategy", ge=1, le=10)
+    merge_results: bool = Field(True, description="Merge and deduplicate results")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "query": "putusan pidana pencucian uang",
+                "strategies": ["vector_search", "parent_child", "hybrid"],
+                "top_k": 3,
+                "merge_results": True
+            }
+        }
+class DocumentResponse(BaseModel):
+    """Document response model."""
+    content: str = Field(..., description="Document content")
     metadata: Dict[str, Any] = Field(..., description="Document metadata")
     score: Optional[float] = Field(None, description="Similarity score")
-    source: str = Field(..., description="Source document information")
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "id": "doc_123",
-                "content": "Dalam putusan Mahkamah Agung No. 123/Pid/2023...",
-                "metadata": {
-                    "jurisdiction": "ID",
-                    "case_type": "criminal",
-                    "court_level": "supreme"
-                },
-                "score": 0.85,
-                "source": "putusan_123_pid_2023.pdf"
-            }
-        }
 
 
 class RetrievalResponse(BaseModel):
-    """Response model for multimodal retrieval API."""
+    """Standard retrieval response."""
     query: str = Field(..., description="Original query")
-    documents: List[RetrievedDocument] = Field(..., description="Retrieved documents")
+    strategy: str = Field(..., description="Strategy used")
+    documents: List[DocumentResponse] = Field(..., description="Retrieved documents")
     total_found: int = Field(..., description="Total documents found")
-    processing_time: float = Field(..., description="Processing time in seconds")
-    timestamp: datetime = Field(default_factory=datetime.now, description="Response timestamp")
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "query": "putusan mahkamah agung tentang korupsi",
-                "documents": [
-                    {
-                        "id": "doc_123",
-                        "content": "Dalam putusan Mahkamah Agung No. 123/Pid/2023...",
-                        "metadata": {"jurisdiction": "ID", "case_type": "criminal"},
-                        "score": 0.85,
-                        "source": "putusan_123_pid_2023.pdf"
-                    }
-                ],
-                "total_found": 1,
-                "processing_time": 0.45,
-                "timestamp": "2025-09-01T10:00:00Z"
-            }
-        }
+    execution_time: float = Field(..., description="Execution time in seconds")
 
 
+class MultiStrategyResponse(BaseModel):
+    """Multi-strategy comparison response."""
+    query: str = Field(..., description="Original query")
+    results: Dict[str, List[DocumentResponse]] = Field(..., description="Results by strategy")
+    execution_time: float = Field(..., description="Execution time in seconds")
+
+
+class ServiceStatusResponse(BaseModel):
+    """Service status response."""
+    default_strategy: str = Field(..., description="Default retrieval strategy")
+    available_strategies: List[str] = Field(..., description="Available strategies")
+    retrievers: Dict[str, Dict[str, Any]] = Field(..., description="Retriever status details")
+
+
+# Helper Functions
+def _convert_strategy(strategy: StrategyEnum) -> RetrievalStrategy:
+    """Convert API strategy enum to service strategy enum."""
+    mapping = {
+        StrategyEnum.VECTOR_SEARCH: RetrievalStrategy.VECTOR_SEARCH,
+        StrategyEnum.PARENT_CHILD: RetrievalStrategy.PARENT_CHILD,
+        StrategyEnum.HYBRID: RetrievalStrategy.HYBRID
+    }
+    return mapping[strategy]
+
+
+def _format_documents(documents) -> List[DocumentResponse]:
+    """Format documents for API response."""
+    return [
+        DocumentResponse(
+            content=doc.page_content,
+            metadata=doc.metadata,
+            score=doc.metadata.get("similarity_score") or doc.metadata.get("hybrid_score")
+        )
+        for doc in documents
+    ]
+
+
+# API Endpoints
 @router.post("/", response_model=RetrievalResponse)
-async def retrieve_documents(
-    request: RetrievalRequest,
-    current_user: User = Depends(get_current_user),
-    rag_service: RAGService = Depends(create_rag_service)
-) -> RetrievalResponse:
+async def enhanced_search(
+    request: EnhancedRetrievalRequest,
+    # current_user: User = Depends(get_current_user)
+):
     """
-    Multimodal retrieval API endpoint.
-
-    Retrieves relevant documents for RAG, REACT agents, and multimodal models.
-    Optimized for low-latency, high-throughput retrieval operations.
-
-    Args:
-        request: Retrieval request with query and parameters
-        current_user: Authenticated user
-        rag_service: RAG service instance
-
-    Returns:
-        RetrievalResponse with relevant documents and metadata
+    Enhanced document search with multiple strategies.
+    Supports vector search, parent-child chunking, and hybrid approaches.
     """
+    import time
+    start_time = time.time()
+    
     try:
-        import time
-        start_time = time.time()
-
-        # Convert retrieval request to search request
-        search_request = SearchRequest(
+        # Convert strategy
+        strategy = _convert_strategy(request.strategy)
+        
+        # Perform search
+        documents = await search_with_retrieval_service(
             query=request.query,
-            max_results=request.top_k,
-            filters=SearchFilters(**request.filters) if request.filters else None,
-            include_summary=False,
-            include_validation=False
+            strategy=strategy,
+            top_k=request.top_k,
+            filters=request.filters,
+            include_scores=request.include_scores
         )
-
-        # Execute search
-        search_response = await rag_service.search_documents(
-            request=search_request,
-            user_id=current_user.id
-        )
-
-        # Convert search results to retrieval format
-        documents = []
-        for result in search_response.results:
-            # Extract content from source documents
-            for source_doc in result.source_documents:
-                doc = RetrievedDocument(
-                    id=f"{source_doc.get('id', 'unknown')}",
-                    content=source_doc.get('content', '')[:request.context_window],
-                    metadata={
-                        "title": source_doc.get('title', ''),
-                        "source": source_doc.get('source', ''),
-                        "page": source_doc.get('page', ''),
-                        "chunk_id": source_doc.get('chunk_id', '')
-                    },
-                    score=source_doc.get('score'),
-                    source=source_doc.get('source', '')
-                )
-                documents.append(doc)
-
-        processing_time = time.time() - start_time
-
+        
+        execution_time = time.time() - start_time
+        
         return RetrievalResponse(
             query=request.query,
-            documents=documents[:request.top_k],  # Limit to requested top_k
+            strategy=request.strategy.value,
+            documents=_format_documents(documents),
             total_found=len(documents),
-            processing_time=round(processing_time, 3)
+            execution_time=execution_time
         )
-
+        
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Retrieval failed: {str(e)}"
-        )
+        logger.error(f"Enhanced search failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
 
 
-@router.get("/health")
-async def retrieval_health_check():
-    """Health check endpoint for retrieval service."""
-    return {
-        "status": "healthy",
-        "service": "multimodal-retrieval-api",
-        "timestamp": datetime.now().isoformat(),
-        "version": "1.0.0"
-    }
-
-@router.post("/batch", response_model=List[RetrievalResponse])
-async def batch_retrieve_documents(
-    requests: List[RetrievalRequest],
-    current_user: User = Depends(get_current_user),
-    rag_service: RAGService = Depends(create_rag_service)
-) -> List[RetrievalResponse]:
+@router.post("/multi-strategy", response_model=MultiStrategyResponse)
+async def multi_strategy_comparison(
+    request: MultiStrategyRequest,
+    # current_user: User = Depends(get_current_user)
+):
     """
-    Batch retrieval endpoint for multiple queries.
+    Compare multiple retrieval strategies for the same query.
+    Useful for strategy evaluation and optimization.
+    """
+    import time
+    start_time = time.time()
+    
+    try:
+        # Convert strategies
+        strategies = [_convert_strategy(s) for s in request.strategies]
+        
+        # Perform multi-strategy search
+        results = await multi_strategy_search(
+            query=request.query,
+            strategies=strategies,
+            top_k=request.top_k,
+            merge_results=request.merge_results
+        )
+        
+        # Format results
+        formatted_results = {}
+        for strategy_name, documents in results.items():
+            formatted_results[strategy_name] = _format_documents(documents)
+        
+        execution_time = time.time() - start_time
+        
+        return MultiStrategyResponse(
+            query=request.query,
+            results=formatted_results,
+            execution_time=execution_time
+        )
+        
+    except Exception as e:
+        logger.error(f"Multi-strategy search failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Multi-strategy search failed: {str(e)}")
 
-    Processes multiple retrieval requests in parallel for efficiency.
-    Useful for multimodal agents that need to retrieve context for multiple queries.
 
-    Args:
-        requests: List of retrieval requests
-        current_user: Authenticated user
-        rag_service: RAG service instance
-
-    Returns:
-        List of retrieval responses
+@router.get("/status", response_model=ServiceStatusResponse)
+async def get_service_status(
+    # current_user: User = Depends(get_current_user)
+):
+    """
+    Get comprehensive status of the retrieval service.
+    Shows available strategies and their health status.
     """
     try:
-        # Process requests in parallel
-        tasks = [
-            retrieve_documents(req, current_user, rag_service)
-            for req in requests
-        ]
-
-        responses = await asyncio.gather(*tasks)
-        return responses
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Batch retrieval failed: {str(e)}"
+        service = await get_retrieval_service()
+        status = service.get_service_status()
+        
+        return ServiceStatusResponse(
+            default_strategy=status["default_strategy"],
+            available_strategies=status["available_strategies"],
+            retrievers=status["retrievers"]
         )
+        
+    except Exception as e:
+        logger.error(f"Failed to get service status: {e}")
+        raise HTTPException(status_code=500, detail=f"Status check failed: {str(e)}")

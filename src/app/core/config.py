@@ -149,7 +149,7 @@ class RAGSettings(BaseSettings):
     
     # Vector database settings
     DATABASE_URL: str = config("POSTGRES_URL")
-    VECTOR_COLLECTION_NAME: str = config("VECTOR_COLLECTION_NAME", default="supreme_court_docs")
+    VECTOR_COLLECTION_NAME: str = config("VECTOR_COLLECTION_NAME", default="ma_putusan_pc_chunks")
     
     # Chunking settings (PRD specifications)
     PARENT_CHUNK_SIZE: int = config("PARENT_CHUNK_SIZE", default=2000)
@@ -163,7 +163,7 @@ class RAGSettings(BaseSettings):
     SEARCH_TIMEOUT_SECONDS: int = config("SEARCH_TIMEOUT_SECONDS", default=10)
     
     # LLM settings
-    LLM_TEMPERATURE: float = config("LLM_TEMPERATURE", default=0.1)
+    LLM_TEMPERATURE: float = config("LLM_TEMPERATURE", default=0)
     LLM_MAX_TOKENS: int = config("LLM_MAX_TOKENS", default=2048)
     
     # Validation settings

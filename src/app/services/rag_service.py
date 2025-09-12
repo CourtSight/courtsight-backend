@@ -4,7 +4,6 @@ Implements business logic using LangChain orchestration while maintaining
 clean architecture separation of concerns.
 """
 
-import asyncio
 from typing import List, Dict, Any, Optional
 from datetime import datetime, date
 from pydantic import BaseModel, Field
@@ -99,8 +98,6 @@ class RAGService:
             
             return response
             
-        except asyncio.TimeoutError:
-            raise RAGServiceError("Search timeout exceeded")
         except Exception as e:
             await self._log_error(request, str(e), user_id)
             raise RAGServiceError(f"Search failed: {str(e)}")
@@ -305,7 +302,7 @@ def create_rag_service() -> RAGService:
     rag_chains = create_rag_chains(
         database_url=settings.DATABASE_URL,
         collection_name=settings.VECTOR_COLLECTION_NAME,
-        enable_validation=settings.ENABLE_CLAIM_VALIDATION
     )
     
     return RAGService(rag_chains)
+

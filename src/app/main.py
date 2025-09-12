@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .admin.initialize import create_admin_interface
 from .api import router
 from .api.routes.search import router as search_router
+from .api.routes.retrieval import router as retrieval_router
 from .core.config import settings
 from .core.setup import create_application, lifespan_factory
 from .core.dependencies import startup_event, shutdown_event
@@ -52,7 +53,10 @@ app.add_middleware(
 )
 
 # Include RAG search routes
-app.include_router(search_router, prefix="/api/v1")
+app.include_router(search_router)
+
+# Include enhanced retrieval routes (already has /api/v1/retrieval prefix)
+app.include_router(retrieval_router)
 
 # Mount admin interface if enabled
 if admin:
@@ -89,6 +93,7 @@ async def root():
         "environment": settings.ENVIRONMENT.value,
         "endpoints": {
             "search": "/api/v1/search",
+            "retrieval": "/api/v1/retrieval",
             "health": "/health",
             "docs": "/docs",
             "admin": settings.CRUD_ADMIN_MOUNT_PATH if admin else None
