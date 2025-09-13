@@ -103,19 +103,18 @@ class CourtRAGChains:
         Anda adalah mesin pencari cerdas berbasis AI yang khusus dirancang untuk tugas pencarian dan analisis hukum di Indonesia, dengan fokus pada putusan Mahkamah Agung dan dokumen hukum terkait.
         
         INSTRUKSI PENTING UNTUK MESIN PENCARI HUKUM:
-        - **Fokus pada Relevansi**: Prioritaskan hasil yang paling relevan dengan pertanyaan pengguna berdasarkan konteks dokumen yang disediakan. Gunakan similarity search dan ranking untuk menentukan urutan.
+        - **Fokus pada Relevansi**: Prioritaskan hasil yang paling relevan dengan pertanyaan pengguna berdasarkan konteks dokumen yang disediakan.
         - **Akurasi Hukum**: Berikan informasi yang akurat, faktual, dan didasarkan sepenuhnya pada konteks. Jangan tambahkan asumsi, interpretasi pribadi, atau informasi di luar dokumen sumber.
         - **Ekstraksi Poin Kunci**: Identifikasi poin-poin hukum utama, preseden, dan argumen hukum dari dokumen, termasuk referensi ke pasal undang-undang atau yurisprudensi terkait.
-        - **Sitasi Lengkap**: Sertakan sitasi yang lengkap dan dapat diverifikasi, termasuk nomor putusan, bagian dokumen, chunk_id, dan halaman jika tersedia. Gunakan format standar hukum Indonesia.
+        - **Sitasi Lengkap**: Sertakan sitasi yang lengkap dan dapat diverifikasi, termasuk nomor putusan, bagian dokumen, link_pdf, source, dan halaman jika tersedia. Gunakan format standar hukum Indonesia.
         - **Bahasa Formal**: Gunakan bahasa hukum formal namun jelas dan mudah dipahami, hindari jargon berlebihan.
         - **Penanganan Ketidakcukupan**: Jika konteks tidak cukup untuk menjawab sepenuhnya, nyatakan dengan jelas dan sarankan pencarian tambahan. Jangan berhalusinasi atau mengisi kekosongan dengan informasi eksternal.
         - **Optimasi untuk Pencarian**: Strukturkan respons untuk memfasilitasi navigasi cepat, seperti highlighting bagian relevan dan saran query terkait.
-        - **Validasi Otomatis**: Evaluasi keandalan setiap klaim berdasarkan bukti dalam konteks (Supported/Partially Supported/Unsupported/Uncertain).
         
         KONTEKS DOKUMEN YANG TERSEDIA:
         {context}
         
-        PERTANYAAN PENGGUNA (Query Pencarian):
+        PERTANYAAN PENGGUNA:
         {question}
         
         TUGAS ANDA:
@@ -130,20 +129,19 @@ class CourtRAGChains:
                 "title": "Judul dokumen lengkap",
                 "case_number": "Nomor perkara resmi (contoh: 123/PID/2023)",
                 "excerpt": "Kutipan relevan langsung dari dokumen, maksimal 300 kata, dengan highlighting bagian penting",
-                "chunk_id": "ID chunk spesifik dari dokumen",
+                "source": "Sumber dokumen dari metadata retrieved",
+                "link_pdf": "URL atau path ke dokumen sumber dari metadata retrieved",
                 "validation_status": "Supported/Partially Supported/Unsupported/Uncertain",
                 "relevance_score": 0.95,
                 "legal_areas": ["Area hukum 1", "Area hukum 2"]
             }}
             ],
-            "confidence_score": 0.85,
+            "confidence_score": 0.0-1.0 (skor kepercayaan keseluruhan berdasarkan relevansi dan validasi),
             "legal_areas": ["Area hukum utama 1", "Area hukum utama 2"],
-            "related_queries": ["Saran query pencarian terkait 1", "Saran query pencarian terkait 2"],
             "metadata": {{
-                "total_documents_found": 5,
-                "search_timestamp": "2024-10-01T12:00:00Z",
-                "top_relevance_threshold": 0.8,
-                "search_strategy": "semantic similarity + legal context matching",
+                "total_documents_found": int,
+                "search_timestamp": datetime,
+                "search_strategy": "query strategy used (e.g., semantic similarity + legal context matching)",
                 "disclaimer": "Hasil berdasarkan dokumen tersedia; konsultasikan ahli hukum untuk nasihat profesional"
             }}
         }}
@@ -162,12 +160,16 @@ class CourtRAGChains:
                 metadata = doc.metadata
                 chunk_id = metadata.get('chunk_id', f'chunk_{i}')
                 case_number = metadata.get('case_number', 'Unknown')
+                # Use link from metadata if available
+                link_pdf = metadata.get('link_pdf', 'Link tidak tersedia')
+                source = metadata.get('source', 'Sumber tidak tersedia')
                 
                 context_parts.append(
                     f"[DOKUMEN {i+1}]\n"
                     f"Nomor Perkara: {case_number}\n"
-                    f"Chunk ID: {chunk_id}\n"
                     f"Konten: {doc.page_content}\n"
+                    f"Link PDF: {link_pdf}\n"
+                    f"Sumber: {source}\n"
                     f"{'='*50}\n"
                 )
             return '\n'.join(context_parts)
