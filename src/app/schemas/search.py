@@ -87,6 +87,9 @@ class SearchRequest(BaseModel):
         description="Natural language search query"
     )
     
+    
+    filters: Optional[SearchFilters] = Field(None, description="Optional search filters")
+    
     @validator('query')
     def query_not_empty(cls, v):
         """Ensure query is not just whitespace."""
@@ -102,9 +105,6 @@ class SearchRequest(BaseModel):
                     "jurisdiction": "ID",
                     "case_type": "criminal"
                 },
-                "max_results": 10,
-                "include_summary": True,
-                "include_validation": True
             }
         }
 
