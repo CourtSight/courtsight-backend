@@ -16,17 +16,19 @@ from .vector_search import VectorSearchRetriever
 from .parent_child import ParentChildRetriever
 from .hybrid import HybridRetriever
 from src.app.core.config import get_settings
+from src.app.core.database import get_db_manager, get_vector_store
 from src.app.services.llm_service import get_llm_service
 logger = logging.getLogger(__name__)
 
 class RetrievalService:
     """
     Unified retrieval service supporting multiple strategies.
-    Implements driven architecture pattern for flexible document retrieval.
+    Implements driven architecture pattern with singleton database connections.
     """
     
-    def __init__(self, vector_store: PGVector, use_redis_store: bool = True):
-        self.vector_store = vector_store
+    def __init__(self, vector_store: Optional[PGVector] = None, use_redis_store: bool = True):
+        # Use singleton vector store if not provided
+        self.vector_store = vector_store if vector_store is not None else get_vector_store()
         self.use_redis_store = use_redis_store
         self._retrievers: Dict[RetrievalStrategy, BaseRetriever] = {}
         self._default_strategy = RetrievalStrategy.VECTOR_SEARCH
@@ -302,23 +304,15 @@ _retrieval_service_instance: Optional[RetrievalService] = None
 def get_retrieval_service() -> RetrievalService:
     """
     Get singleton retrieval service instance.
-    Uses singleton pattern to avoid repeatedly creating instances.
+    Uses singleton pattern to avoid repeatedly creating instances and database connections.
     """
     global _retrieval_service_instance
     
     if _retrieval_service_instance is None:
-        logger.info("Creating new RetrievalService singleton instance")
+        logger.info("Creating new RetrievalService singleton instance with database connection manager")
         
-        # Get settings and services
-        settings = get_settings()
-        llm_service = get_llm_service()
-        
-        # Create vector store with embeddings from LLM service
-        vector_store = PGVector(
-            embeddings=llm_service.embeddings,
-            connection=settings.DATABASE_URL,
-            collection_name=getattr(settings, 'VECTOR_COLLECTION_NAME', 'ma_putusan_pc_chunks'),
-        )
+        # Use singleton database connection manager
+        vector_store = get_vector_store()
         
         # Create singleton instance
         _retrieval_service_instance = RetrievalService(
@@ -327,6 +321,8 @@ def get_retrieval_service() -> RetrievalService:
         )
         
         logger.info("RetrievalService singleton instance created successfully")
+    else:
+        logger.debug("Returning existing RetrievalService singleton instance")
     
     return _retrieval_service_instance
 
@@ -341,7 +337,7 @@ def create_retrieval_service(
     Use this when you need a fresh instance instead of the singleton.
     
     Args:
-        vector_store: Optional pre-configured vector store
+        vector_store: Optional pre-configured vector store (uses singleton if None)
         use_redis_store: Whether to use Redis for document persistence
         collection_name: Collection name for vector store
     
@@ -349,16 +345,10 @@ def create_retrieval_service(
         New RetrievalService instance
     """
     if vector_store is None:
-        settings = get_settings()
-        llm_service = get_llm_service()
-        
-        vector_store = PGVector(
-            embeddings=llm_service.embeddings,
-            connection=settings.DATABASE_URL,
-            collection_name=collection_name,
-        )
+        # Use singleton database connection manager
+        vector_store = get_vector_store(collection_name)
     
-    return RetrievalService(vector_store, use_redis_store)
+    return RetrievalService(vector_store=vector_store, use_redis_store=use_redis_store)
 
 
 def reset_retrieval_service() -> None:

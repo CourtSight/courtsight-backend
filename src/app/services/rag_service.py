@@ -293,14 +293,13 @@ class RAGService:
 # Service factory function
 def create_rag_service() -> RAGService:
     """
-    Factory function to create configured RAG service.
+    Factory function to create configured RAG service with singleton database connections.
     
     Returns:
         Configured RAGService instance
     """
-    # Create RAG chains with production configuration
+    # Create RAG chains with production configuration using singleton connections
     rag_chains = create_rag_chains(
-        database_url=settings.DATABASE_URL,
         collection_name=settings.VECTOR_COLLECTION_NAME,
     )
     

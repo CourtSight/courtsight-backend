@@ -18,6 +18,7 @@ from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGener
 # Pydantic models for structured outputs
 from src.app.schemas.search import SearchResult as SchemaSearchResult, ValidationStatus
 from src.app.services.retrieval import RetrievalService, RetrievalStrategy, get_retrieval_service
+from src.app.core.database import get_vector_store
 import json
 
 from src.app.services.llm_service import get_llm_service
@@ -511,15 +512,15 @@ class CourtRAGChains:
 
 
 def create_rag_chains(
-    database_url: str,
+    database_url: str = None,  # Made optional since we use singleton
     collection_name: str = "ma_putusan_pc_chunks",
     retrieval_strategy: RetrievalStrategy = RetrievalStrategy.VECTOR_SEARCH,
 ) -> CourtRAGChains:
     """
-    Async factory function to create configured RAG chains with retrieval service.
+    Factory function to create configured RAG chains with singleton database connections.
     
     Args:
-        database_url: PostgreSQL connection string
+        database_url: PostgreSQL connection string (optional, uses singleton if None)
         collection_name: Vector store collection name
         retrieval_strategy: Strategy for document retrieval
         
@@ -529,15 +530,14 @@ def create_rag_chains(
     llm_service = get_llm_service()
     retrieval_service = get_retrieval_service()
 
-    embeddings = llm_service.embeddings
-
-    vector_store = PGVector(
-        embeddings=embeddings,
-        collection_name=collection_name,
-        connection=database_url,
-    )
+    # Use singleton database connection manager
+    if collection_name:
+        vector_store = get_vector_store(collection_name)
+    else:
+        vector_store = get_vector_store()
     
     llm = llm_service.llm
+    embeddings = llm_service.embeddings
     
     return CourtRAGChains(
         vector_store=vector_store,
