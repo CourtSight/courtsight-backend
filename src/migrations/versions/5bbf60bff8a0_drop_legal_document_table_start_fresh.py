@@ -5,11 +5,10 @@ Revises: f6395f5971f2
 Create Date: 2025-08-31 16:50:01.969719
 
 """
-from typing import Sequence, Union
+from collections.abc import Sequence
+from typing import Union
 
 from alembic import op
-import sqlalchemy as sa
-
 
 # revision identifiers, used by Alembic.
 revision: str = '16eb520bfea3'
@@ -31,21 +30,21 @@ def upgrade() -> None:
     op.drop_index('idx_legal_document_case_number', table_name='legal_document')
     op.drop_index('idx_legal_document_jurisdiction_type', table_name='legal_document')
     op.drop_index('idx_legal_document_date', table_name='legal_document')
-    
+
     # Drop indexes for document_citation
     op.drop_index('idx_citation_case_number', table_name='document_citation')
     op.drop_index('ix_document_citation_cited_case_number', table_name='document_citation')
     op.drop_index('ix_document_citation_document_id', table_name='document_citation')
     op.drop_index('ix_document_citation_is_validated', table_name='document_citation')
-    
+
     # Drop foreign key constraints
     op.drop_constraint('fk_legal_document_embedding_id', 'legal_document', type_='foreignkey')
     op.drop_constraint('fk_legal_document_collection_id', 'legal_document', type_='foreignkey')
-    
+
     # Drop tables (document_citation first due to foreign key)
     op.drop_table('document_citation')
     op.drop_table('legal_document')
-    
+
     # Drop functions
     op.execute("DROP FUNCTION IF EXISTS match_legal_documents(vector, float, int, text, text, text, timestamptz, timestamptz)")
     op.execute("DROP FUNCTION IF EXISTS get_legal_document_statistics()")

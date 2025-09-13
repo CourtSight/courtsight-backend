@@ -5,6 +5,7 @@ from .logout import router as logout_router
 from .rate_limits import router as rate_limits_router
 from .tiers import router as tiers_router
 from .users import router as users_router
+
 # from .legal_search import router as legal_search_router  # Commented out - file doesn't exist
 # from .document_processing import router as document_processing_router
 

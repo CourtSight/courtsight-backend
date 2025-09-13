@@ -3,23 +3,23 @@ Hybrid retriever implementation.
 Combines multiple retrieval strategies for optimal results.
 """
 
-import asyncio
 import logging
-from typing import List, Dict, Any, Optional, Tuple
+from typing import Any, Dict, List
+
 from langchain_core.documents import Document
 from langchain_postgres import PGVector
 
 from .base import BaseRetriever, RetrievalRequest, RetrievalStrategy
-from .vector_search import VectorSearchRetriever
 from .parent_child import ParentChildRetriever
+from .vector_search import VectorSearchRetriever
 
 logger = logging.getLogger(__name__)
 
 class HybridRetriever(BaseRetriever):
     """Hybrid retriever that combines multiple strategies."""
-    
+
     def __init__(
-        self, 
+        self,
         vector_store: PGVector,
         use_redis_store: bool = True,
         vector_weight: float = 0.6,
@@ -30,15 +30,15 @@ class HybridRetriever(BaseRetriever):
         self.vector_store = vector_store
         self.vector_weight = vector_weight
         self.parent_child_weight = parent_child_weight
-        
+
         # Initialize sub-retrievers
         self.vector_retriever = VectorSearchRetriever(vector_store, **kwargs)
         self.parent_child_retriever = ParentChildRetriever(
-            vector_store, 
+            vector_store,
             use_redis_store=use_redis_store,
             **kwargs
         )
-    
+
     def retrieve(self, request: RetrievalRequest) -> List[Document]:
         """Retrieve documents using hybrid strategy."""
         try:
@@ -46,14 +46,14 @@ class HybridRetriever(BaseRetriever):
             # Option 1: Sequential execution (what you requested)
             vector_docs =  self._safe_retrieve(self.vector_retriever, request)
             parent_child_docs =  self._safe_retrieve(self.parent_child_retriever, request)
-            
+
             # Combine and rank results
             combined_docs = self._combine_results(
-                vector_docs, 
-                parent_child_docs, 
+                vector_docs,
+                parent_child_docs,
                 request.top_k
             )
-            
+
             # Add hybrid metadata
             for doc in combined_docs:
                 doc.metadata["retrieval_strategy"] = "hybrid"
@@ -61,14 +61,14 @@ class HybridRetriever(BaseRetriever):
                     "vector": self.vector_weight,
                     "parent_child": self.parent_child_weight
                 }
-            
+
             logger.info(f"Hybrid retrieval returned {len(combined_docs)} documents")
             return combined_docs
-            
+
         except Exception as e:
             logger.error(f"Hybrid retrieval failed: {e}")
             return []
-    
+
     def _safe_retrieve(self, retriever: BaseRetriever, request: RetrievalRequest) -> List[Document]:
         """Safely execute retrieval with error handling."""
         try:
@@ -76,50 +76,50 @@ class HybridRetriever(BaseRetriever):
         except Exception as e:
             logger.error(f"Retriever {retriever.name} failed: {e}")
             return []
-    
+
     def _combine_results(
-        self, 
-        vector_docs: List[Document], 
+        self,
+        vector_docs: List[Document],
         parent_child_docs: List[Document],
         top_k: int
     ) -> List[Document]:
         """Combine and rank results from different strategies."""
         combined_docs = []
         seen_content = set()
-        
+
         # Score and combine documents
         scored_docs = []
-        
+
         # Process vector search results
         for doc in vector_docs:
             content_hash = hash(doc.page_content)
             if content_hash not in seen_content:
                 seen_content.add(content_hash)
-                
+
                 # Calculate weighted score
                 vector_score = doc.metadata.get("similarity_score", 0.5)
                 weighted_score = vector_score * self.vector_weight
-                
+
                 doc.metadata["hybrid_score"] = weighted_score
                 doc.metadata["vector_score"] = vector_score
                 doc.metadata["source_strategy"] = "vector"
-                
+
                 scored_docs.append((doc, weighted_score))
-        
+
         # Process parent-child results
         for doc in parent_child_docs:
             content_hash = hash(doc.page_content)
             if content_hash not in seen_content:
                 seen_content.add(content_hash)
-                
+
                 # Parent-child documents get base score
                 parent_child_score = 0.7  # Base score for parent-child
                 weighted_score = parent_child_score * self.parent_child_weight
-                
+
                 doc.metadata["hybrid_score"] = weighted_score
                 doc.metadata["parent_child_score"] = parent_child_score
                 doc.metadata["source_strategy"] = "parent_child"
-                
+
                 scored_docs.append((doc, weighted_score))
             else:
                 # Document already exists from vector search, boost its score
@@ -129,25 +129,25 @@ class HybridRetriever(BaseRetriever):
                         new_score = existing_score + boost
                         existing_doc.metadata["hybrid_score"] = new_score
                         existing_doc.metadata["source_strategy"] = "both"
-                        
+
                         # Update the score in the list
                         scored_docs = [(d, new_score if d == existing_doc else s) for d, s in scored_docs]
                         break
-        
+
         # Sort by hybrid score and return top_k
         scored_docs.sort(key=lambda x: x[1], reverse=True)
         combined_docs = [doc for doc, score in scored_docs[:top_k]]
-        
+
         return combined_docs
-    
+
     def supports_filters(self) -> bool:
         """Hybrid retriever supports filters if any sub-retriever does."""
         return self.vector_retriever.supports_filters()
-    
+
     def get_strategy(self) -> RetrievalStrategy:
         """Get the strategy this retriever implements."""
         return RetrievalStrategy.HYBRID
-    
+
     async def add_documents(self, documents: List[Document]):
         """Add documents to both sub-retrievers."""
         try:
@@ -157,7 +157,7 @@ class HybridRetriever(BaseRetriever):
         except Exception as e:
             logger.error(f"Failed to add documents to hybrid retriever: {e}")
             raise
-    
+
     def get_retriever_status(self) -> Dict[str, Any]:
         """Get status of all sub-retrievers."""
         status = {

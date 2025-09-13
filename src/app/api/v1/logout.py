@@ -1,4 +1,3 @@
-from typing import Optional
 
 from fastapi import APIRouter, Cookie, Depends, Response
 from jose import JWTError
@@ -15,7 +14,7 @@ router = APIRouter(tags=["login"])
 async def logout(
     response: Response,
     access_token: str = Depends(oauth2_scheme),
-    refresh_token: Optional[str] = Cookie(None, alias="refresh_token"),
+    refresh_token: str | None = Cookie(None, alias="refresh_token"),
     db: AsyncSession = Depends(async_get_db),
 ) -> dict[str, str]:
     try:

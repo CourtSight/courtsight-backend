@@ -6,12 +6,12 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .admin.initialize import create_admin_interface
 from .api import router
-from .api.routes.search import router as search_router
 from .api.routes.retrieval import router as retrieval_router
+from .api.routes.search import router as search_router
 from .core.config import settings
-from .core.setup import create_application, lifespan_factory
-from .core.dependencies import startup_event, shutdown_event
 from .core.database import database_lifecycle, get_db_status
+from .core.dependencies import shutdown_event, startup_event
+from .core.setup import create_application, lifespan_factory
 
 admin = create_admin_interface()
 
@@ -25,29 +25,29 @@ async def lifespan_with_admin_and_rag(app: FastAPI) -> AsyncGenerator[None, None
     # Run the default lifespan initialization and our custom initialization
     async with default_lifespan(app):
         # Initialize database connections with lifecycle management
-        async with database_lifecycle() as db_manager:
+        async with database_lifecycle():
             # Initialize RAG system
             await startup_event()
-            
+
             # Initialize admin interface if it exists
             if admin:
                 # Initialize admin database and setup
                 await admin.initialize()
-            
+
             # Log database connection status
             db_status = get_db_status()
             print(f"🔗 Database connections initialized: {db_status['active_connections']}/{db_status['max_connections']}")
 
             yield
-            
+
             # Cleanup RAG system
             await shutdown_event()
             print("🔗 Database connections will be closed by context manager")
 
 
 app = create_application(
-    router=router, 
-    settings=settings, 
+    router=router,
+    settings=settings,
     lifespan=lifespan_with_admin_and_rag
 )
 
@@ -76,13 +76,13 @@ if admin:
 async def health_check():
     """Basic health check endpoint with database connection status."""
     from .core.dependencies import check_service_health
-    
+
     # Get database connection status
     db_status = get_db_status()
-    
+
     health_result = await check_service_health()
     health_result["database_connections"] = db_status
-    
+
     return health_result
 
 
@@ -99,7 +99,7 @@ if settings.ENABLE_METRICS:
     async def get_metrics():
         """Prometheus-style metrics endpoint."""
         from .core.dependencies import get_metrics_collector
-        collector = get_metrics_collector()
+        get_metrics_collector()
         # Return metrics in Prometheus format
         return {"status": "metrics_enabled"}
 

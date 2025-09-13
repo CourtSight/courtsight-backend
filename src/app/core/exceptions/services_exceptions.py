@@ -3,17 +3,17 @@ Custom exceptions for Supreme Court RAG system.
 Implements domain-specific error handling with proper HTTP status mapping.
 """
 
-from typing import Optional, Dict, Any
+from typing import Any, Dict
 
 
 class RAGSystemException(Exception):
     """Base exception for RAG system errors."""
-    
+
     def __init__(
         self,
         message: str,
-        error_code: Optional[str] = None,
-        details: Optional[Dict[str, Any]] = None
+        error_code: str | None = None,
+        details: Dict[str, Any] | None = None
     ):
         self.message = message
         self.error_code = error_code

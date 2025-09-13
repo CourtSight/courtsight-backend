@@ -11,27 +11,24 @@ Implements clean architecture dependency patterns with proper
 lifecycle management and configuration injection.
 """
 
-import asyncio
 import logging
-from typing import AsyncGenerator, Dict, Any
+from collections.abc import AsyncGenerator
 from functools import lru_cache
+from typing import Any, Dict
 
 from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
+from langchain_postgres import PGVector
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
-from langchain_postgres import PGVector
-
-from .config import Settings
-from ..services.rag_service import RAGService, create_rag_service
-from ..services.rag.chains import CourtRAGChains, create_rag_chains
-from ..services.document_processor import DocumentProcessor, create_document_processor
-from ..services.guardrails_validator import GuardrailsValidator, create_guardrails_validator
-from ..services.evaluation import RAGEvaluator, create_rag_evaluator
 from ..core.db.database import async_get_db
-from ..models.user import User
 from ..crud.crud_users import crud_users
+from ..models.user import User
+from ..services.evaluation import RAGEvaluator, create_rag_evaluator
+from ..services.guardrails_validator import GuardrailsValidator, create_guardrails_validator
+from ..services.rag.chains import CourtRAGChains
+from .config import Settings
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +37,7 @@ security = HTTPBearer()
 
 
 # Configuration Dependencies
-@lru_cache()
+@lru_cache
 def get_settings() -> Settings:
     """Get application settings with caching."""
     from .config import get_settings as _get_settings
@@ -61,13 +58,13 @@ async def get_database_session() -> AsyncGenerator[AsyncSession, None]:
 
 
 # LangChain Component Dependencies
-@lru_cache()
+@lru_cache
 def get_vertex_ai_embeddings(
     settings: Settings = Depends(get_settings)
 ) -> GoogleGenerativeAIEmbeddings:
     """
     Get configured Gemini embeddings instance.
-    
+
     Uses LRU cache to ensure single instance per application lifecycle.
     """
     try:
@@ -83,7 +80,7 @@ def get_vertex_ai_embeddings(
         )
 
 
-@lru_cache()
+@lru_cache
 def get_vertex_ai_embeddings_direct() -> GoogleGenerativeAIEmbeddings:
     """Get Gemini embeddings instance directly (for testing)."""
     settings = get_settings()
@@ -116,7 +113,7 @@ def get_vertex_ai_embeddings(
 ) -> GoogleGenerativeAIEmbeddings:
     """
     Get configured Gemini embeddings instance.
-    
+
     Uses dependency injection for FastAPI integration.
     """
     try:
@@ -137,7 +134,7 @@ def get_vertex_ai_llm(
 ) -> ChatGoogleGenerativeAI:
     """
     Get configured Gemini LLM instance.
-    
+
     Uses dependency injection for FastAPI integration.
     """
     try:
@@ -154,14 +151,14 @@ def get_vertex_ai_llm(
         )
 
 
-@lru_cache()
+@lru_cache
 def get_vector_store(
     embeddings: GoogleGenerativeAIEmbeddings = Depends(get_vertex_ai_embeddings),
     settings: Settings = Depends(get_settings)
 ) -> PGVector:
     """
     Get configured PostgreSQL vector store.
-    
+
     Uses LRU cache to ensure single instance per application lifecycle.
     """
     try:
@@ -249,14 +246,14 @@ async def get_current_user(
 ) -> User:
     """
     Get current authenticated user from JWT token.
-    
+
     Args:
         credentials: HTTP Bearer token credentials
         db: Database session
-        
+
     Returns:
         User: Authenticated user object
-        
+
     Raises:
         HTTPException: For authentication failures
     """
@@ -264,17 +261,17 @@ async def get_current_user(
         # Decode JWT token and extract user ID
         # This is a simplified version - implement proper JWT decoding
         from ..core.security import decode_access_token
-        
+
         payload = decode_access_token(credentials.credentials)
         user_id = payload.get("sub")
-        
+
         if user_id is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid authentication credentials",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        
+
         # Get user from database
         user = await crud_users.get(db, id=user_id)
         if user is None:
@@ -283,9 +280,9 @@ async def get_current_user(
                 detail="User not found",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        
+
         return user
-        
+
     except Exception as e:
         logger.error(f"Authentication failed: {str(e)}")
         raise HTTPException(
@@ -300,13 +297,13 @@ async def get_current_active_user(
 ) -> User:
     """
     Get current active user.
-    
+
     Args:
         current_user: Current authenticated user
-        
+
     Returns:
         User: Active user object
-        
+
     Raises:
         HTTPException: If user is inactive
     """
@@ -323,13 +320,13 @@ async def get_current_admin_user(
 ) -> User:
     """
     Get current admin user.
-    
+
     Args:
         current_user: Current active user
-        
+
     Returns:
         User: Admin user object
-        
+
     Raises:
         HTTPException: If user is not admin
     """
@@ -344,51 +341,50 @@ async def get_current_admin_user(
 # Rate Limiting Dependencies
 class RateLimiter:
     """Simple rate limiter implementation."""
-    
+
     def __init__(self, settings: Settings):
         self.settings = settings
         self.user_requests: Dict[str, list] = {}
-    
+
     async def check_rate_limit(self, user_id: str, endpoint: str) -> None:
         """
         Check rate limit for user and endpoint.
-        
+
         Args:
             user_id: User identifier
             endpoint: API endpoint identifier
-            
+
         Raises:
             HTTPException: If rate limit exceeded
         """
         # Simple implementation - replace with Redis-based solution for production
-        import time
         from datetime import datetime, timedelta
-        
+
         now = datetime.now()
         user_key = f"{user_id}:{endpoint}"
-        
+
         if user_key not in self.user_requests:
             self.user_requests[user_key] = []
-        
+
         # Clean old requests
         cutoff_time = now - timedelta(minutes=1)
         self.user_requests[user_key] = [
             req_time for req_time in self.user_requests[user_key]
             if req_time > cutoff_time
         ]
-        
+
         # Check limit
         if len(self.user_requests[user_key]) >= self.settings.DEFAULT_RATE_LIMIT_LIMIT:
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail="Rate limit exceeded"
             )
-        
+
         # Add current request
         self.user_requests[user_key].append(now)
 
 
-@lru_cache()
+@lru_cache
 def get_rate_limiter(
     settings: Settings = Depends(get_settings)
 ) -> RateLimiter:
@@ -400,7 +396,7 @@ def get_rate_limiter(
 async def check_service_health() -> Dict[str, Any]:
     """
     Perform comprehensive health check of all services.
-    
+
     Returns:
         Dict with health status of all components
     """
@@ -409,56 +405,56 @@ async def check_service_health() -> Dict[str, Any]:
         "timestamp": "2023-12-01T10:30:00Z",
         "services": {}
     }
-    
+
     try:
         # Check database connectivity
         # This would test actual database connection
         health_status["services"]["database"] = "healthy"
-        
+
         # Check vector store
         # This would test vector store connectivity
         health_status["services"]["vector_store"] = "healthy"
-        
+
         # Check LLM service
         # This would test LLM availability
         health_status["services"]["llm_service"] = "healthy"
-        
+
         # Check embedding service
         # This would test embedding service availability
         health_status["services"]["embedding_service"] = "healthy"
-        
+
     except Exception as e:
         logger.error(f"Health check failed: {str(e)}")
         health_status["status"] = "unhealthy"
         health_status["error"] = str(e)
-    
+
     return health_status
 
 
 # Monitoring Dependencies
 class MetricsCollector:
     """Metrics collection for monitoring."""
-    
+
     def __init__(self):
         self.metrics = {}
-    
+
     def increment_counter(self, metric: str, labels: Dict[str, str] = None):
         """Increment a counter metric."""
         # Implementation for metrics collection
         pass
-    
+
     def set_gauge(self, metric: str, value: float, labels: Dict[str, str] = None):
         """Set a gauge metric."""
         # Implementation for metrics collection
         pass
-    
+
     def record_histogram(self, metric: str, value: float, labels: Dict[str, str] = None):
         """Record a histogram metric."""
         # Implementation for metrics collection
         pass
 
 
-@lru_cache()
+@lru_cache
 def get_metrics_collector() -> MetricsCollector:
     """Get metrics collector instance."""
     return MetricsCollector()
@@ -468,14 +464,14 @@ def get_metrics_collector() -> MetricsCollector:
 async def startup_event():
     """Application startup event handler."""
     logger.info("Starting Supreme Court RAG API")
-    
+
     # Initialize services
     try:
         # Test database connection
         # Test vector store connection
         # Test LLM service connection
         # Initialize caches
-        
+
         logger.info("All services initialized successfully")
     except Exception as e:
         logger.error(f"Startup failed: {str(e)}")
@@ -485,13 +481,13 @@ async def startup_event():
 async def shutdown_event():
     """Application shutdown event handler."""
     logger.info("Shutting down Supreme Court RAG API")
-    
+
     # Cleanup resources
     try:
         # Close database connections
         # Close HTTP clients
         # Clear caches
-        
+
         logger.info("Shutdown completed successfully")
     except Exception as e:
         logger.error(f"Shutdown failed: {str(e)}")
@@ -502,7 +498,7 @@ __all__ = [
     "get_settings",
     "get_database_session",
     "get_vertex_ai_embeddings",
-    "get_vertex_ai_llm", 
+    "get_vertex_ai_llm",
     "get_vector_store",
     "get_rag_chains",
     "get_rag_service",

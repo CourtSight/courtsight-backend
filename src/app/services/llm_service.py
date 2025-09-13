@@ -4,17 +4,15 @@ Provides unified interface for all LLM operations with centralized configuration
 """
 
 import logging
-from typing import Dict, Any, Optional, List, Union
-from functools import lru_cache
 from contextlib import asynccontextmanager
+from functools import lru_cache
+from typing import Any, Dict, List
 
-from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
-from langchain_core.language_models import BaseLanguageModel
-from langchain_core.embeddings import Embeddings
 from langchain_core.callbacks import BaseCallbackHandler
+from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import JsonOutputParser, StrOutputParser
 from langchain_core.runnables import RunnableSequence
+from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 
 from ..core.config import Settings, settings
 from ..core.exceptions import LLMError
@@ -23,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 # Import Google Generative AI safety settings
 try:
-    from google.generativeai.types import HarmCategory, HarmBlockThreshold
+    from google.generativeai.types import HarmBlockThreshold, HarmCategory
     GOOGLE_GENAI_AVAILABLE = True
 except ImportError:
     GOOGLE_GENAI_AVAILABLE = False
@@ -53,10 +51,10 @@ class LLMService:
     Handles all LLM operations including chat, embeddings, and custom chains.
     """
 
-    def __init__(self, config: Optional[Settings] = None):
+    def __init__(self, config: Settings | None = None):
         self.config = config or settings
-        self._llm_instance: Optional[ChatGoogleGenerativeAI] = None
-        self._embeddings_instance: Optional[GoogleGenerativeAIEmbeddings] = None
+        self._llm_instance: ChatGoogleGenerativeAI | None = None
+        self._embeddings_instance: GoogleGenerativeAIEmbeddings | None = None
         self._callback_handler = LLMCallbackHandler()
 
         # Initialize components
@@ -76,7 +74,6 @@ class LLMService:
         """Create configured LLM instance with safety settings and performance configurations."""
         try:
             # Build safety settings if Google Generative AI is available
-            safety_settings = None
             # if GOOGLE_GENAI_AVAILABLE:
             #     safety_settings = {
             #         HarmCategory.HARM_CATEGORY_HATE_SPEECH: self._get_harm_threshold(
@@ -164,8 +161,8 @@ class LLMService:
     def create_chat_chain(
         self,
         system_prompt: str,
-        user_prompt_template: Optional[str] = None,
-        output_parser: Optional[Any] = None
+        user_prompt_template: str | None = None,
+        output_parser: Any | None = None
     ) -> RunnableSequence:
         """
         Create a chat chain with system prompt.
@@ -205,7 +202,7 @@ class LLMService:
         self,
         system_prompt: str,
         response_format: Any,
-        user_prompt_template: Optional[str] = None
+        user_prompt_template: str | None = None
     ) -> RunnableSequence:
         """
         Create a structured output chain.
@@ -245,7 +242,7 @@ class LLMService:
     async def generate_text(
         self,
         prompt: str,
-        system_prompt: Optional[str] = None,
+        system_prompt: str | None = None,
         **kwargs
     ) -> str:
         """
@@ -279,7 +276,7 @@ class LLMService:
         self,
         prompt: str,
         response_format: Any,
-        system_prompt: Optional[str] = None,
+        system_prompt: str | None = None,
         **kwargs
     ) -> Any:
         """
@@ -413,10 +410,10 @@ class LLMService:
 
 
 # Global service instance
-_llm_service_instance: Optional[LLMService] = None
+_llm_service_instance: LLMService | None = None
 
 
-@lru_cache()
+@lru_cache
 def get_llm_service() -> LLMService:
     """Get singleton LLM service instance."""
     global _llm_service_instance
@@ -425,7 +422,7 @@ def get_llm_service() -> LLMService:
     return _llm_service_instance
 
 
-def create_llm_service(config: Optional[Settings] = None) -> LLMService:
+def create_llm_service(config: Settings | None = None) -> LLMService:
     """
     Factory function to create LLM service instance.
 

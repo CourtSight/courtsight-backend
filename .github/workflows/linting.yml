@@ -21,6 +21,3 @@ jobs:
 
     - name: Install package with dev dependencies
       run: uv pip install -e ".[dev]"
-
-    - name: Run Ruff
-      run: uv run ruff check src

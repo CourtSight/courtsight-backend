@@ -5,11 +5,10 @@ Revises: 6441b28b335c
 Create Date: 2025-08-12 12:21:59.115614
 
 """
-from typing import Sequence, Union
+from collections.abc import Sequence
+from typing import Union
 
 from alembic import op
-import sqlalchemy as sa
-
 
 # revision identifiers, used by Alembic.
 revision: str = 'e169d1834abd'
@@ -20,10 +19,10 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Add Supabase pgvector functions and performance indexes for legal document search."""
-    
+
     # Enable the pgvector extension (if not already enabled)
     op.execute("CREATE EXTENSION IF NOT EXISTS vector;")
-    
+
     # Function to match legal documents based on vector similarity
     op.execute("""
         CREATE OR REPLACE FUNCTION match_legal_documents(
@@ -77,7 +76,7 @@ def upgrade() -> None:
           LIMIT match_count;
         $$;
     """)
-    
+
     # Function to get legal document statistics
     op.execute("""
         CREATE OR REPLACE FUNCTION get_legal_document_statistics()
@@ -119,7 +118,7 @@ def upgrade() -> None:
           FROM legal_document;
         $$;
     """)
-    
+
     # Function to get popular search queries
     op.execute("""
         CREATE OR REPLACE FUNCTION get_popular_search_queries(
@@ -147,65 +146,65 @@ def upgrade() -> None:
           LIMIT limit_count;
         $$;
     """)
-    
+
     # Create indexes for better performance
     # Vector index for similarity search (using HNSW algorithm)
     op.execute("""
-        CREATE INDEX IF NOT EXISTS legal_document_embedding_idx 
-        ON legal_document 
+        CREATE INDEX IF NOT EXISTS legal_document_embedding_idx
+        ON legal_document
         USING hnsw (embedding vector_cosine_ops);
     """)
-    
+
     # Additional indexes for filtering
     op.execute("""
-        CREATE INDEX IF NOT EXISTS idx_legal_document_active_embedding 
-        ON legal_document (is_active, embedding) 
+        CREATE INDEX IF NOT EXISTS idx_legal_document_active_embedding
+        ON legal_document (is_active, embedding)
         WHERE is_active = true AND embedding IS NOT NULL;
     """)
-    
+
     op.execute("""
-        CREATE INDEX IF NOT EXISTS idx_legal_document_jurisdiction_active 
-        ON legal_document (jurisdiction, is_active) 
+        CREATE INDEX IF NOT EXISTS idx_legal_document_jurisdiction_active
+        ON legal_document (jurisdiction, is_active)
         WHERE is_active = true;
     """)
-    
+
     op.execute("""
-        CREATE INDEX IF NOT EXISTS idx_legal_document_case_type_active 
-        ON legal_document (case_type, is_active) 
+        CREATE INDEX IF NOT EXISTS idx_legal_document_case_type_active
+        ON legal_document (case_type, is_active)
         WHERE is_active = true AND case_type IS NOT NULL;
     """)
-    
+
     op.execute("""
-        CREATE INDEX IF NOT EXISTS idx_legal_document_legal_area_active 
-        ON legal_document (legal_area, is_active) 
+        CREATE INDEX IF NOT EXISTS idx_legal_document_legal_area_active
+        ON legal_document (legal_area, is_active)
         WHERE is_active = true AND legal_area IS NOT NULL;
     """)
-    
+
     op.execute("""
-        CREATE INDEX IF NOT EXISTS idx_legal_document_decision_date_active 
-        ON legal_document (decision_date, is_active) 
+        CREATE INDEX IF NOT EXISTS idx_legal_document_decision_date_active
+        ON legal_document (decision_date, is_active)
         WHERE is_active = true AND decision_date IS NOT NULL;
     """)
-    
+
     # Composite index for common filter combinations
     op.execute("""
-        CREATE INDEX IF NOT EXISTS idx_legal_document_filters 
-        ON legal_document (jurisdiction, case_type, legal_area, decision_date, is_active) 
+        CREATE INDEX IF NOT EXISTS idx_legal_document_filters
+        ON legal_document (jurisdiction, case_type, legal_area, decision_date, is_active)
         WHERE is_active = true;
     """)
-    
+
     # Search query analytics indexes
     op.execute("""
-        CREATE INDEX IF NOT EXISTS idx_search_query_created_at 
+        CREATE INDEX IF NOT EXISTS idx_search_query_created_at
         ON search_query (created_at DESC);
     """)
-    
+
     op.execute("""
-        CREATE INDEX IF NOT EXISTS idx_search_query_text_results 
-        ON search_query (query_text, results_count) 
+        CREATE INDEX IF NOT EXISTS idx_search_query_text_results
+        ON search_query (query_text, results_count)
         WHERE results_count > 0;
     """)
-    
+
     # Add comments for documentation
     op.execute("COMMENT ON FUNCTION match_legal_documents IS 'Performs vector similarity search on legal documents with optional filtering';")
     op.execute("COMMENT ON FUNCTION get_legal_document_statistics IS 'Returns comprehensive statistics about the legal document collection';")
@@ -215,7 +214,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Remove Supabase pgvector functions and performance indexes."""
-    
+
     # Drop indexes
     op.execute("DROP INDEX IF EXISTS idx_search_query_text_results;")
     op.execute("DROP INDEX IF EXISTS idx_search_query_created_at;")
@@ -226,7 +225,7 @@ def downgrade() -> None:
     op.execute("DROP INDEX IF EXISTS idx_legal_document_jurisdiction_active;")
     op.execute("DROP INDEX IF EXISTS idx_legal_document_active_embedding;")
     op.execute("DROP INDEX IF EXISTS legal_document_embedding_idx;")
-    
+
     # Drop functions
     op.execute("DROP FUNCTION IF EXISTS get_popular_search_queries;")
     op.execute("DROP FUNCTION IF EXISTS get_legal_document_statistics;")

@@ -10,7 +10,6 @@ import logging
 # except ImportError:
 #     # uvloop not available, use default asyncio
 #     pass
-
 from arq.worker import Worker
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")

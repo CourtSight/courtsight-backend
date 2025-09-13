@@ -3,10 +3,11 @@ Pydantic schemas for Supreme Court RAG search API.
 Defines the API contracts and data validation models.
 """
 
-from pydantic import BaseModel, Field, validator
-from typing import List, Dict, Any, Optional, Union
-from datetime import datetime, date
+from datetime import date, datetime
 from enum import Enum
+from typing import Dict, List
+
+from pydantic import BaseModel, Field, validator
 
 
 class CaseType(str, Enum):
@@ -40,14 +41,14 @@ class DateRange(BaseModel):
     """Date range filter for search queries."""
     start: date = Field(..., description="Start date (inclusive)")
     end: date = Field(..., description="End date (inclusive)")
-    
+
     @validator('end')
     def end_after_start(cls, v, values):
         """Ensure end date is after start date."""
         if 'start' in values and v < values['start']:
             raise ValueError('End date must be after start date')
         return v
-    
+
     @validator('end')
     def end_not_future(cls, v):
         """Ensure end date is not in the future."""
@@ -58,12 +59,12 @@ class DateRange(BaseModel):
 
 class SearchFilters(BaseModel):
     """Search filters for refining query results."""
-    jurisdiction: Optional[Jurisdiction] = Field(None, description="Jurisdiction code")
-    date_range: Optional[DateRange] = Field(None, description="Date range filter")
-    case_type: Optional[CaseType] = Field(None, description="Type of legal case")
-    court_level: Optional[CourtLevel] = Field(None, description="Court level")
-    case_number: Optional[str] = Field(None, description="Specific case number")
-    
+    jurisdiction: Jurisdiction | None = Field(None, description="Jurisdiction code")
+    date_range: DateRange | None = Field(None, description="Date range filter")
+    case_type: CaseType | None = Field(None, description="Type of legal case")
+    court_level: CourtLevel | None = Field(None, description="Court level")
+    case_number: str | None = Field(None, description="Specific case number")
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -81,23 +82,23 @@ class SearchFilters(BaseModel):
 class SearchRequest(BaseModel):
     """Request model for document search."""
     query: str = Field(
-        ..., 
-        min_length=3, 
+        ...,
+        min_length=3,
         max_length=1000,
         description="Natural language search query"
     )
-    filters: Optional[SearchFilters] = Field(None, description="Optional search filters")
+    filters: SearchFilters | None = Field(None, description="Optional search filters")
     max_results: int = Field(10, ge=1, le=50, description="Maximum number of results")
     include_summary: bool = Field(True, description="Include AI-generated summary")
     include_validation: bool = Field(True, description="Include claim validation")
-    
+
     @validator('query')
     def query_not_empty(cls, v):
         """Ensure query is not just whitespace."""
         if not v.strip():
             raise ValueError('Query cannot be empty or whitespace only')
         return v.strip()
-    
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -117,12 +118,12 @@ class SourceDocument(BaseModel):
     """Source document citation information."""
     title: str = Field(..., description="Document title")
     case_number: str = Field(..., description="Case number or identifier")
-    date: Optional[str] = Field(None, description="Document date")
-    url: Optional[str] = Field(None, description="Document URL if available")
+    date: str | None = Field(None, description="Document date")
+    url: str | None = Field(None, description="Document URL if available")
     excerpt: str = Field(..., description="Relevant excerpt from document")
     chunk_id: str = Field(..., description="Unique chunk identifier")
     confidence_score: float = Field(0.0, ge=0.0, le=1.0, description="Relevance confidence")
-    
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -152,7 +153,7 @@ class SearchResult(BaseModel):
     validation_status: ValidationStatus = Field(..., description="Overall claim validation status")
     confidence_score: float = Field(0.0, ge=0.0, le=1.0, description="Overall confidence in result")
     legal_areas: List[str] = Field(default_factory=list, description="Relevant legal areas/topics")
-    
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -187,7 +188,7 @@ class RAGMetrics(BaseModel):
     documents_retrieved: int = Field(..., description="Number of documents retrieved")
     tokens_used: int = Field(0, description="Total tokens consumed")
     cache_hit: bool = Field(False, description="Whether result was cached")
-    
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -208,10 +209,10 @@ class SearchResponse(BaseModel):
     results: List[SearchResult] = Field(..., description="Search results")
     metrics: RAGMetrics = Field(..., description="Performance metrics")
     timestamp: datetime = Field(..., description="Response timestamp")
-    filters_applied: Optional[SearchFilters] = Field(None, description="Filters that were applied")
+    filters_applied: SearchFilters | None = Field(None, description="Filters that were applied")
     total_results: int = Field(..., description="Total number of results found")
     has_more: bool = Field(False, description="Whether more results are available")
-    
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -240,17 +241,17 @@ class SearchResponse(BaseModel):
 # Document ingestion schemas
 class DocumentMetadata(BaseModel):
     """Metadata for a legal document."""
-    case_number: Optional[str] = Field(None, description="Case number")
-    title: Optional[str] = Field(None, description="Document title")
-    court: Optional[str] = Field(None, description="Court name")
-    jurisdiction: Optional[Jurisdiction] = Field(None, description="Jurisdiction")
-    date: Optional[datetime] = Field(None, description="Document date")
-    case_type: Optional[CaseType] = Field(None, description="Case type")
-    court_level: Optional[CourtLevel] = Field(None, description="Court level")
+    case_number: str | None = Field(None, description="Case number")
+    title: str | None = Field(None, description="Document title")
+    court: str | None = Field(None, description="Court name")
+    jurisdiction: Jurisdiction | None = Field(None, description="Jurisdiction")
+    date: datetime | None = Field(None, description="Document date")
+    case_type: CaseType | None = Field(None, description="Case type")
+    court_level: CourtLevel | None = Field(None, description="Court level")
     language: str = Field("id", description="Document language code")
-    page_count: Optional[int] = Field(None, description="Number of pages")
+    page_count: int | None = Field(None, description="Number of pages")
     file_format: str = Field("pdf", description="Original file format")
-    
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -272,7 +273,7 @@ class DocumentInput(BaseModel):
     """Input document for bulk ingestion."""
     content: str = Field(..., description="Document text content")
     metadata: DocumentMetadata = Field(..., description="Document metadata")
-    
+
     @validator('content')
     def content_not_empty(cls, v):
         """Ensure content is not empty."""
@@ -286,14 +287,14 @@ class BulkDocumentRequest(BaseModel):
     documents: List[DocumentInput] = Field(..., description="List of documents to ingest")
     batch_size: int = Field(50, ge=1, le=200, description="Processing batch size")
     overwrite_existing: bool = Field(False, description="Whether to overwrite existing documents")
-    
+
     @validator('documents')
     def documents_not_empty(cls, v):
         """Ensure documents list is not empty."""
         if not v:
             raise ValueError('Documents list cannot be empty')
         return v
-    
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -320,8 +321,8 @@ class BulkDocumentResponse(BaseModel):
     processed_count: int = Field(..., description="Number of documents processed")
     errors: List[str] = Field(default_factory=list, description="Processing errors")
     timestamp: datetime = Field(..., description="Response timestamp")
-    processing_id: Optional[str] = Field(None, description="Background processing ID")
-    
+    processing_id: str | None = Field(None, description="Background processing ID")
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -350,9 +351,9 @@ class HealthResponse(BaseModel):
     timestamp: datetime = Field(..., description="Health check timestamp")
     response_time: float = Field(0.0, description="System response time in seconds")
     services: Dict[str, ServiceStatus] = Field(..., description="Individual service statuses")
-    error: Optional[str] = Field(None, description="Error message if unhealthy")
+    error: str | None = Field(None, description="Error message if unhealthy")
     version: str = Field("1.0.0", description="API version")
-    
+
     class Config:
         json_schema_extra = {
             "example": {

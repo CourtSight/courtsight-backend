@@ -1,7 +1,7 @@
 from arq.connections import RedisSettings
 
 from ...core.config import settings
-from .functions import shutdown, startup, track_search_analytics, process_documents_background
+from .functions import process_documents_background, shutdown, startup, track_search_analytics
 
 REDIS_QUEUE_HOST = settings.REDIS_QUEUE_HOST
 REDIS_QUEUE_PORT = settings.REDIS_QUEUE_PORT

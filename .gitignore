@@ -48,6 +48,12 @@ coverage.xml
 *.cover
 *.py,cover
 .hypothesis/
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pytest
 .pytest_cache/
 cover/
 

@@ -24,7 +24,10 @@ jobs:
       run: uv pip install -e ".[dev]"
 
     - name: Run mypy
-      run: uv run mypy src --config-file pyproject.toml
+      run: |
+        cd $GITHUB_WORKSPACE
+        uv run python -m mypy src/app --config-file .mypy.ini --no-incremental
       env:
         ENVIRONMENT: local
         SECRET_KEY: test-secret-key-for-testing-only
+        PYTHONPATH: .
