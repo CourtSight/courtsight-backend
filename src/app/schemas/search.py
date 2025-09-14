@@ -116,23 +116,26 @@ class SearchRequest(BaseModel):
 
 class SourceDocument(BaseModel):
     """Source document citation information."""
-    title: str = Field(..., description="Document title")
-    case_number: str = Field(..., description="Case number or identifier")
-    date: str | None = Field(None, description="Document date")
-    url: str | None = Field(None, description="Document URL if available")
-    excerpt: str = Field(..., description="Relevant excerpt from document")
-    chunk_id: str = Field(..., description="Unique chunk identifier")
-    confidence_score: float = Field(0.0, ge=0.0, le=1.0, description="Relevance confidence")
+    title: str = Field(..., description="Judul dokumen lengkap")
+    case_number: str = Field(..., description="Nomor perkara resmi (contoh: 123/PID/2023)")
+    excerpt: str = Field(..., description="Kutipan relevan langsung dari dokumen, maksimal 300 kata, dengan highlighting bagian penting")
+    source: str = Field(..., description="Sumber dokumen dari metadata retrieved")
+    link_pdf: str = Field(..., description="URL atau path ke dokumen sumber dari metadata retrieved")
+    validation_status: str = Field(..., description="Supported/Partially Supported/Unsupported/Uncertain")
+    relevance_score: float = Field(0.95, ge=0.0, le=1.0, description="Relevance score")
+    legal_areas: List[str] = Field(default_factory=list, description="Relevant legal areas/topics")
 
     class Config:
         json_schema_extra = {
             "example": {
-                "title": "Putusan Kasasi No. 123/K/Pid/2023",
-                "case_number": "123/K/Pid/2023",
-                "date": "2023-05-15",
-                "excerpt": "Dalam perkara korupsi, terdakwa terbukti...",
-                "chunk_id": "doc_123_chunk_5",
-                "confidence_score": 0.85
+            "title": "Judul dokumen lengkap",
+            "case_number": "Nomor perkara resmi (contoh: 123/PID/2023)",
+            "excerpt": "Kutipan relevan langsung dari dokumen, maksimal 300 kata, dengan highlighting bagian penting",
+            "source": "Sumber dokumen dari metadata retrieved",
+            "link_pdf": "URL atau path ke dokumen sumber dari metadata retrieved",
+            "validation_status": "Supported",
+            "relevance_score": 0.95,
+            "legal_areas": ["Area hukum 1", "Area hukum 2"]
             }
         }
 
@@ -150,7 +153,7 @@ class SearchResult(BaseModel):
     summary: str = Field(..., description="AI-generated summary of relevant information")
     key_points: List[str] = Field(default_factory=list, description="Key legal points extracted")
     source_documents: List[SourceDocument] = Field(default_factory=list, description="Source citations")
-    validation_status: ValidationStatus = Field(..., description="Overall claim validation status")
+    validation_status: str = Field(..., description="Overall claim validation status")
     confidence_score: float = Field(0.0, ge=0.0, le=1.0, description="Overall confidence in result")
     legal_areas: List[str] = Field(default_factory=list, description="Relevant legal areas/topics")
 
@@ -164,12 +167,15 @@ class SearchResult(BaseModel):
                     "Ganti rugi wajib dibayar"
                 ],
                 "source_documents": [
-                    {
-                        "title": "Putusan Kasasi No. 123/K/Pid/2023",
-                        "case_number": "123/K/Pid/2023",
-                        "excerpt": "Terdakwa terbukti melakukan korupsi...",
-                        "chunk_id": "doc_123_chunk_5",
-                        "confidence_score": 0.85
+                   {                
+                    "title": "Judul dokumen lengkap",
+                    "case_number": "Nomor perkara resmi (contoh: 123/PID/2023)",
+                    "excerpt": "Kutipan relevan langsung dari dokumen, maksimal 300 kata, dengan highlighting bagian penting",
+                    "source": "Sumber dokumen dari metadata retrieved",
+                    "link_pdf": "URL atau path ke dokumen sumber dari metadata retrieved",
+                    "validation_status": "Supported/Partially Supported/Unsupported/Uncertain",
+                    "relevance_score": 0.95,
+                    "legal_areas": ["Area hukum 1", "Area hukum 2"]
                     }
                 ],
                 "validation_status": "Supported",
