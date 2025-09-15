@@ -139,7 +139,7 @@ async def get_search_health(
         HealthResponse with system status and metrics
     """
     try:
-        health_data = await rag_service.get_system_health()
+        health_data =  rag_service.get_system_health()
 
         return HealthResponse(
             status=health_data["status"],

@@ -216,7 +216,7 @@ async def get_service_status(
     Shows available strategies and their health status.
     """
     try:
-        service = await get_retrieval_service()
+        service = get_retrieval_service()  # Remove await - this is not async
         status = service.get_service_status()
 
         return ServiceStatusResponse(

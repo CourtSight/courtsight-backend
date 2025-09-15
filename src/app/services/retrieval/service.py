@@ -47,8 +47,9 @@ class RetrievalService:
 
             # Parent-child retriever
             self._retrievers[RetrievalStrategy.PARENT_CHILD] = ParentChildRetriever(
-                self.vector_store,
-                use_redis_store=self.use_redis_store
+                vector_store=self.vector_store,
+                embeddings_model=self.vector_store.embeddings,
+                collection_name="parent_documents"
             )
 
             # Hybrid retriever
@@ -107,12 +108,28 @@ class RetrievalService:
 
         # Execute retrieval
         try:
-            documents = retriever.retrieve(request)
-
-            # Add service metadata
-            for doc in documents:
-                doc.metadata["service_strategy"] = strategy.value
-                doc.metadata["service_query"] = query
+            response = retriever.retrieve(request)
+            
+            # Handle different response types
+            if hasattr(response, 'documents'):
+                # RetrievalResponse format (from parent-child)
+                documents = []
+                for doc_result in response.documents:
+                    # Convert RetrievedDocument to Document
+                    from langchain_core.documents import Document
+                    doc = Document(
+                        page_content=doc_result.content,
+                        metadata=doc_result.metadata or {}
+                    )
+                    doc.metadata["service_strategy"] = strategy.value
+                    doc.metadata["service_query"] = query
+                    documents.append(doc)
+            else:
+                # List[Document] format (from vector search)
+                documents = response
+                for doc in documents:
+                    doc.metadata["service_strategy"] = strategy.value
+                    doc.metadata["service_query"] = query
 
             logger.info(
                 f"Retrieved {len(documents)} documents using {strategy.value} strategy"

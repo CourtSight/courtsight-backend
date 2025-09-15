@@ -19,6 +19,15 @@ class RetrievalStrategy(str, Enum):
     SEMANTIC_SEARCH = "semantic_search"
     KEYWORD_SEARCH = "keyword_search"
 
+class DocumentResult(BaseModel):
+    """Individual document result from retrieval."""
+    
+    content: str
+    metadata: Dict[str, Any] = {}
+    score: float = 0.0
+    source: str = "unknown"
+
+
 class RetrievalRequest(BaseModel):
     """Unified request model for all retrieval strategies."""
     query: str = Field(..., description="Search query")

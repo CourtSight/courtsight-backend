@@ -34,9 +34,9 @@ class HybridRetriever(BaseRetriever):
         # Initialize sub-retrievers
         self.vector_retriever = VectorSearchRetriever(vector_store, **kwargs)
         self.parent_child_retriever = ParentChildRetriever(
-            vector_store,
-            use_redis_store=use_redis_store,
-            **kwargs
+            vector_store=vector_store,
+            embeddings_model=vector_store.embeddings,
+            collection_name="hybrid_parent_child"
         )
 
     def retrieve(self, request: RetrievalRequest) -> List[Document]:
@@ -167,7 +167,7 @@ class HybridRetriever(BaseRetriever):
             },
             "parent_child_retriever": {
                 "available": True,
-                "parent_count": self.parent_child_retriever.get_parent_count(),
+                "parent_count": self.parent_child_retriever._get_document_count(),
                 "doc_store_type": type(self.parent_child_retriever.doc_store).__name__
             },
             "weights": {
