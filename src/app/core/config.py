@@ -195,6 +195,38 @@ class EvaluationSettings(BaseSettings):
     HEALTH_CHECK_TIMEOUT: int = config("HEALTH_CHECK_TIMEOUT", default=5)
 
 
+class STTSettings(BaseSettings):
+    """Speech-to-Text service configuration."""
+    
+    # Google Cloud Platform settings
+    GCP_PROJECT: str = config("GCP_PROJECT", default="courtsight-prod")
+    GCS_BUCKET: str = config("GCS_BUCKET", default="courtsight-stt")
+    GOOGLE_APPLICATION_CREDENTIALS: str | None = config(
+        "GOOGLE_APPLICATION_CREDENTIALS", 
+        default="/code/credential/g-72-courtsightteam-4b64a115adb5.json"
+    )
+    
+    # STT Engine settings
+    STT_ENGINE: str = config("STT_ENGINE", default="gcp_stt_v2")  # or "whisper"
+    WHISPER_MODEL: str = config("WHISPER_MODEL", default="large-v3")
+    LANGUAGE_CODE: str = config("LANGUAGE_CODE", default="id-ID")
+    
+    # Transcription settings
+    ENABLE_DIARIZATION: bool = config("ENABLE_DIARIZATION", default=True)
+    MIN_SPEAKERS: int = config("MIN_SPEAKERS", default=1)
+    MAX_SPEAKERS: int = config("MAX_SPEAKERS", default=6)
+    ENABLE_WORD_TIME_OFFSETS: bool = config("ENABLE_WORD_TIME_OFFSETS", default=True)
+    
+    # Performance settings
+    MAX_CONCURRENT_JOBS: int = config("MAX_CONCURRENT_JOBS", default=10)
+    AUDIO_MAX_SIZE_MB: int = config("AUDIO_MAX_SIZE_MB", default=100)
+    TRANSCRIPTION_TIMEOUT_SECONDS: int = config("TRANSCRIPTION_TIMEOUT_SECONDS", default=300)
+    
+    # Storage settings
+    AUDIO_UPLOAD_PATH: str = config("AUDIO_UPLOAD_PATH", default="/tmp/uploads")
+    TRANSCRIPT_STORAGE_PATH: str = config("TRANSCRIPT_STORAGE_PATH", default="/tmp/transcripts")
+
+
 
 
 class EnvironmentOption(Enum):
@@ -222,6 +254,7 @@ class Settings(
     VertexAISettings,
     RAGSettings,
     EvaluationSettings,
+    STTSettings,
     EnvironmentSettings,
 ):
     """Main application settings combining all configuration sections."""

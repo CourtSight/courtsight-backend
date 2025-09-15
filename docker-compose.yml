@@ -16,6 +16,7 @@ services:
       - ./.env:/code/.env  # Sync .env changes in real-time
       - ./src/alembic.ini:/code/alembic.ini
       - ./src/migrations:/code/migrations
+      - ./credential:/code/credential  # Mount GCP credentials
 
   worker:
     build:
@@ -29,7 +30,8 @@ services:
     volumes:
       # Mount source code for background worker
       - ./src/app:/code/app
-      - ./.env:/code/.env  # Sync .env changes in real-time
+      - ./.env:/code/.env
+      - ./credential:/code/credential  # Mount GCP credentials  # Sync .env changes in real-time
       - ./src/alembic.ini:/code/alembic.ini
       - ./src/migrations:/code/migrations
 
