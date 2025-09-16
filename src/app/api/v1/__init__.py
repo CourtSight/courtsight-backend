@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 
+from .chatbot import router as chatbot_router
 from .login import router as login_router
 from .logout import router as logout_router
 from .rate_limits import router as rate_limits_router
@@ -11,6 +12,7 @@ from .users import router as users_router
 # from .document_processing import router as document_processing_router
 
 router = APIRouter(prefix="/v1")
+router.include_router(chatbot_router)
 router.include_router(login_router)
 router.include_router(logout_router)
 router.include_router(users_router)

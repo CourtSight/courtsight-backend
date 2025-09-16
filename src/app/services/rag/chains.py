@@ -511,6 +511,19 @@ class CourtRAGChains:
 
         return result
 
+    def retrieve_documents(self, query: str, top_k: int=5) -> List[Document]:
+        """Retrieve documents from the RAG system."""
+        try:
+            return self.retrieval_service.retrieve(
+                query=query,
+                strategy=RetrievalStrategy.PARENT_CHILD,
+                top_k=top_k
+            )
+            
+        except Exception as e:
+            logger.error(f"Document retrieval failed: {str(e)}")
+            return []
+
 
 def create_rag_chains(
     database_url: str = None,  # Made optional since we use singleton

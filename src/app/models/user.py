@@ -1,10 +1,14 @@
 import uuid as uuid_pkg
 from datetime import UTC, datetime
+from typing import List, TYPE_CHECKING
 
 from sqlalchemy import DateTime, ForeignKey, String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..core.db.database import Base
+
+if TYPE_CHECKING:
+    from .chatbot import Conversation
 
 
 class User(Base):
@@ -26,3 +30,11 @@ class User(Base):
     is_superuser: Mapped[bool] = mapped_column(default=False)
 
     tier_id: Mapped[int | None] = mapped_column(ForeignKey("tier.id"), index=True, default=None, init=False)
+
+    # Relationships
+    conversations: Mapped[List["Conversation"]] = relationship(
+        "Conversation", 
+        back_populates="user",
+        cascade="all, delete-orphan",
+        init=False
+    )

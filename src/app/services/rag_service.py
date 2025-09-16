@@ -4,6 +4,7 @@ Implements business logic using LangChain orchestration while maintaining
 clean architecture separation of concerns.
 """
 
+from asyncio.log import logger
 from datetime import date, datetime
 from typing import Any, Dict, List
 
@@ -171,6 +172,14 @@ class RAGService:
             tokens_used=0,  # Will be populated by callbacks
             confidence_score=self._calculate_confidence(result)
         )
+
+    def retrieve_documents(self, query: str, top_k: int) -> List[Document]:
+        """Retrieve documents from the RAG system."""
+        try:
+            return self.rag_chains.retrieve_documents(query, top_k=top_k)
+        except Exception as e:
+            logger.error(f"Document retrieval failed: {str(e)}")
+            return []
 
     def _calculate_confidence(self, result: SearchResult) -> float:
         """Calculate confidence score based on validation results."""

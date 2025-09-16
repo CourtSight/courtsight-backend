@@ -149,7 +149,7 @@ class RAGSettings(BaseSettings):
 
     # Vector database settings
     DATABASE_URL: str = config("POSTGRES_URL")
-    VECTOR_COLLECTION_NAME: str = config("VECTOR_COLLECTION_NAME", default="putusan_child_chunks")
+    VECTOR_COLLECTION_NAME: str = config("VECTOR_COLLECTION_NAME", default="ma_putusan_pc_chunks")
 
     # Chunking settings (PRD specifications)
     PARENT_CHUNK_SIZE: int = config("PARENT_CHUNK_SIZE", default=2000)
