@@ -12,7 +12,9 @@ from langchain_postgres import PGVector
 from .base import BaseRetriever, RetrievalRequest, RetrievalStrategy
 from .parent_child import ParentChildRetriever
 from .vector_search import VectorSearchRetriever
+from ...core.config import get_settings
 
+settings = get_settings()
 logger = logging.getLogger(__name__)
 
 class HybridRetriever(BaseRetriever):
@@ -36,7 +38,7 @@ class HybridRetriever(BaseRetriever):
         self.parent_child_retriever = ParentChildRetriever(
             vector_store=vector_store,
             embeddings_model=vector_store.embeddings,
-            collection_name="hybrid_parent_child"
+            collection_name=settings.VECTOR_COLLECTION_NAME
         )
 
     def retrieve(self, request: RetrievalRequest) -> List[Document]:

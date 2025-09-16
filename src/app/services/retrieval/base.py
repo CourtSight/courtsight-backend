@@ -49,7 +49,7 @@ class RetrievalRequest(BaseModel):
                     "court": "PN Denpasar",
                     "year": "2025"
                 },
-                "collection_name": "ma_putusan_pc_chunks",
+                "collection_name": "putusan_child_chunks",
                 "include_scores": True,
                 "include_metadata": True,
                 "context_window": 2000

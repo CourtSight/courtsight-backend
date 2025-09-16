@@ -18,6 +18,8 @@ from .base import BaseRetriever, RetrievalRequest, RetrievalStrategy
 from .hybrid import HybridRetriever
 from .parent_child import ParentChildRetriever
 from .vector_search import VectorSearchRetriever
+from ...core.config import get_settings
+settings = get_settings()
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +51,7 @@ class RetrievalService:
             self._retrievers[RetrievalStrategy.PARENT_CHILD] = ParentChildRetriever(
                 vector_store=self.vector_store,
                 embeddings_model=self.vector_store.embeddings,
-                collection_name="parent_documents"
+                collection_name=settings.VECTOR_COLLECTION_NAME
             )
 
             # Hybrid retriever
@@ -279,7 +281,7 @@ class RetrievalService:
 async def create_retrieval_service(
     connection_string: str,
     embedding_model: GoogleGenerativeAIEmbeddings,
-    collection_name: str = "ma_putusan_pc_chunks",
+    collection_name: str = "putusan_child_chunks",
     use_redis_store: bool = True
 ):
     """
@@ -348,7 +350,7 @@ def get_retrieval_service() -> RetrievalService:
 def create_retrieval_service(
     vector_store: PGVector | None = None,
     use_redis_store: bool = True,
-    collection_name: str = "ma_putusan_pc_chunks"
+    collection_name: str = "putusan_child_chunks"
 ) -> RetrievalService:
     """
     Factory function to create a new retrieval service instance.

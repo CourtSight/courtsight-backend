@@ -81,7 +81,7 @@ class RAGService:
 
             # Execute RAG pipeline with timeout for PRD compliance
             # Use synchronous invoke for now
-            result = self.rag_chains.invoke(request.query, lc_filters)
+            result = self.rag_chains.invoke(request.query, lc_filters, request.strategy)
 
             # Check if result is None
             if result is None:
@@ -113,6 +113,11 @@ class RAGService:
         # Validate filters
         if request.filters:
             self._validate_filters(request.filters)
+            
+        if request.strategy not in ["vector_search", "parent_child", "hybrid"]:
+            raise ValidationError("Invalid retrieval strategy")
+        
+        
 
     def _validate_filters(self, filters: SearchFilters) -> None:
         """Validate search filters against business rules."""

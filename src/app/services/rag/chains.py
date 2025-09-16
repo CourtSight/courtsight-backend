@@ -79,7 +79,7 @@ class CourtRAGChains:
         vector_store: PGVector,
         llm: ChatGoogleGenerativeAI,
         embeddings: GoogleGenerativeAIEmbeddings,
-        retrieval_strategy: RetrievalStrategy = RetrievalStrategy.VECTOR_SEARCH,
+        retrieval_strategy: RetrievalStrategy = RetrievalStrategy.PARENT_CHILD,
         retrieval_service: RetrievalService | None = None
     ):
         self.vector_store = vector_store
@@ -305,7 +305,7 @@ class CourtRAGChains:
             return []
 
 
-    def invoke(self, query: str, filters: Dict[str, Any] | None = None) -> SearchResult:
+    def invoke(self, query: str, filters: Dict[str, Any] | None = None, strategy: str | None = None) -> SearchResult:
         """
         Main entry point for the RAG system.
 
@@ -514,8 +514,8 @@ class CourtRAGChains:
 
 def create_rag_chains(
     database_url: str = None,  # Made optional since we use singleton
-    collection_name: str = "ma_putusan_pc_chunks",
-    retrieval_strategy: RetrievalStrategy = RetrievalStrategy.VECTOR_SEARCH,
+    collection_name: str = "putusan_child_chunks",
+    retrieval_strategy: RetrievalStrategy = RetrievalStrategy.PARENT_CHILD,
 ) -> CourtRAGChains:
     """
     Factory function to create configured RAG chains with singleton database connections.

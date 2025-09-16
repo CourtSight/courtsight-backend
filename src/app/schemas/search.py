@@ -91,6 +91,7 @@ class SearchRequest(BaseModel):
     max_results: int = Field(10, ge=1, le=50, description="Maximum number of results")
     include_summary: bool = Field(True, description="Include AI-generated summary")
     include_validation: bool = Field(True, description="Include claim validation")
+    strategy: str = Field("parent_child", description="Retrieval strategy to use")
 
     @validator('query')
     def query_not_empty(cls, v):
@@ -103,13 +104,7 @@ class SearchRequest(BaseModel):
         json_schema_extra = {
             "example": {
                 "query": "putusan mahkamah agung tentang korupsi",
-                "filters": {
-                    "jurisdiction": "ID",
-                    "case_type": "criminal"
-                },
                 "max_results": 10,
-                "include_summary": True,
-                "include_validation": True
             }
         }
 

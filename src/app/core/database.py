@@ -61,7 +61,7 @@ class DatabaseConnectionManager:
 
     def get_vector_store(
         self,
-        collection_name: str = "ma_putusan_pc_chunks",
+        collection_name: str = "putusan_child_chunks",
         use_jsonb: bool = True
     ) -> PGVector:
         """
