@@ -77,8 +77,9 @@ class ChatbotService:
         self.precedent_explorer = None
         self.citation_generator = None
         
-        # Cache for conversations
+        # Cache for conversations - CONVERSATION-SPECIFIC MEMORY
         self.conversation_cache: Dict[str, Any] = {}
+        self.conversation_memories: Dict[str, Any] = {}  # Memory per conversation
         
         # Performance tracking
         self.query_count = 0
@@ -99,8 +100,8 @@ class ChatbotService:
             # Initialize Langraph workflow
             self.workflow_orchestrator = LegalWorkflowOrchestrator()
             
-            # Initialize enhanced memory
-            self.memory_system = MemorySystem(
+            # Initialize enhanced memory (template for conversations)
+            self.memory_template = MemorySystem(
                 max_messages=100,
                 max_entities=50,
                 max_topics=20,
@@ -118,6 +119,22 @@ class ChatbotService:
         except Exception as e:
             logger.error(f"Failed to initialize enhanced chatbot service: {str(e)}")
             raise
+    
+    def _get_conversation_memory(self, conversation_id: str):
+        """Get or create memory system for specific conversation."""
+        if conversation_id not in self.conversation_memories:
+            # Create new memory system for this conversation
+            from .memory import MemorySystem
+            self.conversation_memories[conversation_id] = MemorySystem(
+                max_messages=100,
+                max_entities=50,
+                max_topics=20,
+                entity_confidence_threshold=0.7,
+                topic_relevance_threshold=0.6
+            )
+            logger.info(f"Created new memory system for conversation: {conversation_id}")
+        
+        return self.conversation_memories[conversation_id]
     
     def _create_enhanced_agent(self) -> AgentExecutor:
         """Create enhanced agent with advanced tools."""
@@ -180,7 +197,6 @@ Thought: {agent_scratchpad}
                 tools=all_tools,
                 verbose=False,
                 handle_parsing_errors=True,
-                max_iterations=10,  # Reduced from 10 to prevent infinite loops
                 early_stopping_method="generate",  # Stop when final answer is generated
                 return_intermediate_steps=False  # For better debugging
             )
@@ -197,9 +213,10 @@ Thought: {agent_scratchpad}
             agent_executor = AgentExecutor(
                 agent=agent,
                 tools=all_tools,
-                verbose=True,
+                verbose=False,
                 handle_parsing_errors=True,
-                max_iterations=10
+                max_iterations=15,
+                early_stopping_method="generate"  # Stop when final answer is generated
             )
             
             logger.info(f"Enhanced agent created with {len(all_tools)} tools")
@@ -224,9 +241,14 @@ Thought: {agent_scratchpad}
         tools_used = []
         
         try:
-            # Add query to memory if enabled
-            if request.memory_enabled and self.memory_system:
-                await self.memory_system.add_message(HumanMessage(content=request.query))
+            # Add query to memory if enabled - CONVERSATION SPECIFIC
+            memory_system = None
+            if request.memory_enabled:
+                memory_system = self._get_conversation_memory(conversation_id)
+                await memory_system.add_message(HumanMessage(content=request.query))
+                logger.info(f"Added user message to conversation {conversation_id}. Total messages: {len(memory_system.messages)}")
+            else:
+                logger.warning("Memory system not enabled")
             
             # Determine query complexity and routing
             complexity_analysis = await self._analyze_query_complexity(request.query)
@@ -234,18 +256,25 @@ Thought: {agent_scratchpad}
             # Route to appropriate processing method
             if request.use_workflow and complexity_analysis["use_workflow"]:
                 response_content, workflow_tools = await self._process_with_workflow(
-                    request.query, conversation_id, request
+                    request.query, conversation_id, request, memory_system
                 )
                 tools_used.extend(workflow_tools)
             else:
                 response_content, agent_tools = await self._process_with_agent(
-                    request.query, conversation_id, request
+                    request.query, conversation_id, request, memory_system
                 )
                 tools_used.extend(agent_tools)
             
-            # Add response to memory if enabled
-            if request.memory_enabled and self.memory_system:
-                await self.memory_system.add_message(AIMessage(content=response_content))
+            # Add response to memory if enabled - CONVERSATION SPECIFIC
+            if request.memory_enabled and memory_system:
+                await memory_system.add_message(AIMessage(content=response_content))
+                logger.info(f"Added AI response to conversation {conversation_id}. Total messages: {len(memory_system.messages)}")
+                
+                # Debug: Show recent messages in memory
+                recent_messages = list(memory_system.messages)[-4:]  # Last 4 messages
+                logger.info(f"Recent messages in conversation {conversation_id}:")
+                for i, msg in enumerate(recent_messages):
+                    logger.info(f"  {i+1}. {msg.message_type}: {msg.content[:100]}...")
             
             # Calculate response time
             response_time = (datetime.now() - start_time).total_seconds()
@@ -254,10 +283,10 @@ Thought: {agent_scratchpad}
             self.query_count += 1
             self.total_response_time += response_time
             
-            # Get memory summary if enabled
+            # Get memory summary if enabled - CONVERSATION SPECIFIC
             memory_summary = None
-            if request.memory_enabled and self.memory_system:
-                memory_summary = self._get_memory_summary()
+            if request.memory_enabled and memory_system:
+                memory_summary = self._get_memory_summary(memory_system)
             
             # Create response
             response = ChatResponse(
@@ -309,10 +338,12 @@ Thought: {agent_scratchpad}
             # Send initial status
             yield f"data: {json.dumps({'type': 'status', 'message': 'Processing your request...', 'conversation_id': conversation_id})}\n\n"
             
-            # Add query to memory if enabled
-            if request.memory_enabled and self.memory_system:
-                await self.memory_system.add_message(HumanMessage(content=request.query))
-                yield f"data: {json.dumps({'type': 'status', 'message': 'Added to conversation memory'})}\n\n"
+            # Add query to memory if enabled - CONVERSATION SPECIFIC
+            memory_system = None
+            if request.memory_enabled:
+                memory_system = self._get_conversation_memory(conversation_id)
+                await memory_system.add_message(HumanMessage(content=request.query))
+                yield f"data: {json.dumps({'type': 'status', 'message': f'Added to conversation memory (total: {len(memory_system.messages)})'})}\n\n"
             
             # Determine query complexity and routing
             yield f"data: {json.dumps({'type': 'status', 'message': 'Analyzing query complexity...'})}\n\n"
@@ -324,12 +355,12 @@ Thought: {agent_scratchpad}
             
             # Route to appropriate processing method with streaming
             if request.use_workflow and complexity_analysis["use_workflow"]:
-                async for chunk in self._process_with_workflow_streaming(request.query, conversation_id, request):
+                async for chunk in self._process_with_workflow_streaming(request.query, conversation_id, request, memory_system):
                     yield f"data: {json.dumps(chunk)}\n\n"
                     if chunk.get('type') == 'tools_used':
                         tools_used.extend(chunk.get('tools', []))
             else:
-                async for chunk in self._process_with_agent_streaming(request.query, conversation_id, request):
+                async for chunk in self._process_with_agent_streaming(request.query, conversation_id, request, memory_system):
                     yield f"data: {json.dumps(chunk)}\n\n"
                     if chunk.get('type') == 'tools_used':
                         tools_used.extend(chunk.get('tools', []))
@@ -360,26 +391,38 @@ Thought: {agent_scratchpad}
             }
             yield f"data: {json.dumps(error_data)}\n\n"
     
-    async def _process_with_agent_streaming(self, query: str, conversation_id: str, request: ChatRequest):
+    async def _process_with_agent_streaming(self, query: str, conversation_id: str, request: ChatRequest, memory_system=None):
         """Stream agent processing with real-time updates."""
         try:
             yield {'type': 'status', 'message': 'Initializing agent...'}
             
-            # Get relevant context
-            relevant_context = []
-            if request.memory_enabled and self.memory_system:
-                context_messages = self.memory_system.get_relevant_context(query, max_messages=5)
-                relevant_context = [msg.content for msg in context_messages]
-                yield {'type': 'status', 'message': f'Retrieved {len(relevant_context)} context messages'}
+            # Get relevant context - IMPROVED VERSION  
+            context_prompt = ""
+            if request.memory_enabled and memory_system:
+                recent_messages = list(memory_system.messages)[-6:]  # Last 6 messages
+                
+                if recent_messages:
+                    context_prompt = "\\n\\nKONTEKS PERCAKAPAN SEBELUMNYA (untuk referensi):\\n"
+                    for msg in recent_messages:
+                        role = "User" if msg.message_type == "human" else "Assistant"
+                        context_prompt += f"{role}: {msg.content}\\n"
+                    context_prompt += "\\nBerdasarkan konteks di atas, jawab pertanyaan berikut:\\n"
+                    
+                yield {'type': 'status', 'message': f'Retrieved {len(recent_messages)} context messages'}
+            
+            # Create enhanced query
+            if context_prompt:
+                enhanced_query = f"{context_prompt}{query}"
+            else:
+                enhanced_query = query
             
             # Create agent input
             agent_input = {
-                "input": query,
-                "context": relevant_context,
+                "input": enhanced_query,
                 "conversation_id": conversation_id
             }
             
-            yield {'type': 'status', 'message': 'Agent processing...'}
+            yield {'type': 'status', 'message': 'Agent processing with context...'}
             
             # For now, simulate streaming by calling the regular agent and yielding incremental updates
             # In a real implementation, you'd modify the agent to support streaming
@@ -410,22 +453,28 @@ Thought: {agent_scratchpad}
         except Exception as e:
             yield {'type': 'error', 'message': f'Agent processing error: {str(e)}'}
     
-    async def _process_with_workflow_streaming(self, query: str, conversation_id: str, request: ChatRequest):
+    async def _process_with_workflow_streaming(self, query: str, conversation_id: str, request: ChatRequest, memory_system=None):
         """Stream workflow processing with real-time updates."""
         try:
             yield {'type': 'status', 'message': 'Initializing workflow orchestrator...'}
             
-            # Get relevant context
+            # Get relevant context - IMPROVED VERSION
             relevant_context = []
-            if request.memory_enabled and self.memory_system:
-                context_messages = self.memory_system.get_relevant_context(query, max_messages=5)
-                relevant_context = [msg.content for msg in context_messages]
-                yield {'type': 'status', 'message': f'Retrieved {len(relevant_context)} context messages'}
+            context_string = ""
+            if request.memory_enabled and memory_system:
+                recent_messages = list(memory_system.messages)[-6:]  # Last 6 messages
+                
+                if recent_messages:
+                    relevant_context = [f"{msg.message_type.title()}: {msg.content}" for msg in recent_messages]
+                    context_string = "\\n".join(relevant_context)
+                    
+                yield {'type': 'status', 'message': f'Retrieved {len(recent_messages)} context messages'}
             
             # Execute workflow with streaming updates
             workflow_input = {
                 "question": query,
                 "context": relevant_context,
+                "context_string": context_string,
                 "conversation_id": conversation_id
             }
             
@@ -545,7 +594,7 @@ Thought: {agent_scratchpad}
             }
     
     async def _process_with_workflow(self, query: str, conversation_id: str, 
-                                   request: ChatRequest) -> Tuple[str, List[str]]:
+                                   request: ChatRequest, memory_system=None) -> Tuple[str, List[str]]:
         """
         Process query using Langraph workflow.
         
@@ -558,18 +607,26 @@ Thought: {agent_scratchpad}
             Response content and list of tools used
         """
         try:
-            # Get relevant context from memory
+            # Get relevant context from memory - IMPROVED VERSION
             relevant_context = []
-            if request.memory_enabled and self.memory_system:
-                context_messages = self.memory_system.get_relevant_context(query, max_messages=5)
-                relevant_context = [msg.content for msg in context_messages]
+            context_string = ""
+            if request.memory_enabled and memory_system:
+                # Get last N messages for workflow too
+                recent_messages = list(memory_system.messages)[-6:]  # Last 6 messages
+                
+                if recent_messages:
+                    relevant_context = [f"{msg.message_type.title()}: {msg.content}" for msg in recent_messages]
+                    context_string = "\\n".join(relevant_context)
             
-            # Execute workflow
-            workflow_result = await self.workflow_orchestrator.execute_workflow({
+            # Execute workflow with enhanced context
+            workflow_input = {
                 "question": query,
                 "context": relevant_context,
+                "context_string": context_string,  # Add formatted context string
                 "conversation_id": conversation_id
-            })
+            }
+            
+            workflow_result = await self.workflow_orchestrator.execute_workflow(workflow_input)
             
             # Extract response and tools used
             response_content = workflow_result.get("final_response", "Tidak dapat memproses permintaan.")
@@ -591,7 +648,7 @@ Thought: {agent_scratchpad}
             return f"Error processing with workflow: {str(e)}", ["workflow_error"]
     
     async def _process_with_agent(self, query: str, conversation_id: str,
-                                request: ChatRequest) -> Tuple[str, List[str]]:
+                                request: ChatRequest, memory_system=None) -> Tuple[str, List[str]]:
         """
         Process query using ReAct agent.
         
@@ -604,17 +661,28 @@ Thought: {agent_scratchpad}
             Response content and list of tools used
         """
         try:
-            # Get relevant context from memory
+            # Get relevant context from memory - IMPROVED VERSION
             context_prompt = ""
-            if request.memory_enabled and self.memory_system:
-                context_messages = self.memory_system.get_relevant_context(query, max_messages=3)
-                if context_messages:
-                    context_prompt = "\\n\\nKonteks percakapan sebelumnya:\\n"
-                    context_prompt += "\\n".join([f"- {msg.content[:200]}..." 
-                                                 for msg in context_messages])
+            if request.memory_enabled and memory_system:
+                # Get last N messages instead of "relevant" scoring
+                # This ensures we always have recent context
+                recent_messages = list(memory_system.messages)[-6:]  # Last 6 messages (3 pairs of user/AI)
+                
+                if recent_messages:
+                    context_prompt = "\\n\\nKONTEKS PERCAKAPAN SEBELUMNYA (untuk referensi):\\n"
+                    for i, msg in enumerate(recent_messages):
+                        role = "User" if msg.message_type == "human" else "Assistant"
+                        # Use full content, not truncated
+                        context_prompt += f"{role}: {msg.content}\\n"
+                    context_prompt += "\\nBerdasarkan konteks di atas, jawab pertanyaan berikut:\\n"
             
-            # Enhance query with context
-            enhanced_query = f"{query}{context_prompt}"
+            # Create enhanced query with explicit context instructions
+            if context_prompt:
+                enhanced_query = f"{context_prompt}{query}"
+            else:
+                enhanced_query = query
+            
+            logger.info(f"Enhanced query with context (first 200 chars): {enhanced_query[:200]}...")
             
             # Execute agent with fallback handling
             result = None
@@ -683,18 +751,18 @@ Thought: {agent_scratchpad}
         from uuid import uuid4        
         return f"chat_{uuid4().hex[:8]}_{int(datetime.now().timestamp())}"
     
-    def _get_memory_summary(self) -> Dict[str, Any]:
+    def _get_memory_summary(self, memory_system=None) -> Dict[str, Any]:
         """Get summary of current memory state."""
-        if not self.memory_system:
+        if not memory_system:
             return {}
         
         try:
             return {
-                "total_messages": len(self.memory_system.messages),
-                "total_entities": len(self.memory_system.entities),
-                "total_topics": len(self.memory_system.topics),
-                "recent_entities": list(self.memory_system.entities.keys())[-5:],
-                "recent_topics": list(self.memory_system.topics.keys())[-3:]
+                "total_messages": len(memory_system.messages),
+                "total_entities": len(memory_system.entities),
+                "total_topics": len(memory_system.topics),
+                "recent_entities": list(memory_system.entities.keys())[-5:],
+                "recent_topics": list(memory_system.topics.keys())[-3:]
             }
         except Exception as e:
             logger.error(f"Error getting memory summary: {str(e)}")
