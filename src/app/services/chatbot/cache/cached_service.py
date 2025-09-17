@@ -28,7 +28,7 @@ class CachedEnhancedChatbotService:
     - Performance metrics
     """
     
-    def __init__(self, enhanced_service: EnhancedChatbotService):
+    def __init__(self, enhanced_service: ChatbotService):
         """
         Initialize cached service.
         

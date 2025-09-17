@@ -165,7 +165,7 @@ Thought: {agent_scratchpad}
             enhanced_llm = self.llm_service.llm
             # Override temperature for agent to prevent generation issues
             if hasattr(enhanced_llm, 'temperature'):
-                enhanced_llm.temperature = 0.1  # Slightly higher than 0 to prevent generation issues
+                enhanced_llm.temperature = 0.01  # Slightly higher than 0 to prevent generation issues
             
             agent = create_react_agent(
                 llm=enhanced_llm,
@@ -178,11 +178,11 @@ Thought: {agent_scratchpad}
             agent_executor = AgentExecutor(
                 agent=agent,
                 tools=all_tools,
-                verbose=True,
+                verbose=False,
                 handle_parsing_errors=True,
-                max_iterations=8,  # Reduced from 10 to prevent infinite loops
+                max_iterations=10,  # Reduced from 10 to prevent infinite loops
                 early_stopping_method="generate",  # Stop when final answer is generated
-                return_intermediate_steps=True  # For better debugging
+                return_intermediate_steps=False  # For better debugging
             )
             
             # Create enhanced agent
@@ -680,7 +680,7 @@ Thought: {agent_scratchpad}
     
     def _generate_conversation_id(self) -> str:
         """Generate unique conversation ID."""
-        from uuid import uuid4
+        from uuid import uuid4        
         return f"chat_{uuid4().hex[:8]}_{int(datetime.now().timestamp())}"
     
     def _get_memory_summary(self) -> Dict[str, Any]:

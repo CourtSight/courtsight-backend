@@ -1,8 +1,8 @@
 from datetime import datetime
-from typing import Annotated, Any, Dict, List, Optional
+from typing import Annotated, Any, Dict, List, Optional, Union
 from uuid import UUID
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 
 from ..core.schemas import TimestampSchema, UUIDSchema
 
@@ -47,10 +47,26 @@ class ChatRequest(BaseModel):
         description="User's question or message",
         examples=["Apa dasar hukum putusan tentang sengketa tanah?"]
     )]
-    conversation_id: Optional[UUID] = Field(
+    conversation_id: Optional[Union[str, UUID]] = Field(
         None, 
         description="ID of existing conversation, if continuing a chat"
     )
+    
+    @field_validator('conversation_id', mode='before')
+    @classmethod
+    def validate_conversation_id(cls, v):
+        """Convert string conversation_id to UUID if needed."""
+        if v is None:
+            return v
+        if isinstance(v, str):
+            try:
+                # Try to convert to UUID if it's a valid UUID string
+                UUID(v)
+                return v
+            except ValueError:
+                # If not a valid UUID, return as string for custom handling
+                return v
+        return v
     include_reasoning: bool = Field(
         True, 
         description="Whether to include detailed reasoning steps in response"

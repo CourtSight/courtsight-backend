@@ -15,8 +15,6 @@ def get_available_tools():
         BasicSummarizerTool(),
         ValidatorTool(),
         CaseComparatorTool(),
-        PrecedentExplorerTool(), 
-        CitationGeneratorTool(),
     ]
 
 __all__ = [
@@ -24,7 +22,5 @@ __all__ = [
     "BasicSummarizerTool", 
     "ValidatorTool",
     "CaseComparatorTool",
-    "PrecedentExplorerTool",
-    "CitationGeneratorTool",
     "get_available_tools",
 ]

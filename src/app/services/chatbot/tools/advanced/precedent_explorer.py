@@ -245,19 +245,19 @@ class PrecedentExplorerTool(BaseTool):
                 include_scores=True
             )
             
-            # Strategy 3: Hybrid search (if available)
-            try:
-                documents_hybrid = self.retrieval_service.retrieve(
-                    query=query,
-                    strategy=RetrievalStrategy.HYBRID,
-                    top_k=max_results,
-                    include_scores=True
-                )
-            except:
-                documents_hybrid = []
+            # # Strategy 3: Hybrid search (if available)
+            # try:
+            #     documents_hybrid = self.retrieval_service.retrieve(
+            #         query=query,
+            #         strategy=RetrievalStrategy.HYBRID,
+            #         top_k=max_results,
+            #         include_scores=True
+            #     )
+            # except:
+            #     documents_hybrid = []
             
             # Combine and deduplicate results
-            all_documents = documents_pc + documents_vs + documents_hybrid
+            all_documents = documents_pc + documents_vs 
             seen_cases = set()
             
             for doc in all_documents:

@@ -71,11 +71,13 @@ async def chat_with_legal_assistant(
     try:
         # Get enhanced chatbot service
         
-        # check if conversation_id null or not if null create new conversation id
+        # Ensure we have a conversation_id for memory continuity
         if not request.conversation_id:
             import uuid
             request.conversation_id = str(uuid.uuid4())
-            # Create new conversation in database
+            logger.info(f"Created new conversation ID: {request.conversation_id}")
+        else:
+            logger.info(f"Using existing conversation ID: {request.conversation_id}")
             
         # Convert to enhanced request format
         enhanced_request = ChatbotRequest(
@@ -164,10 +166,13 @@ async def chat_with_legal_assistant_stream(
     from fastapi.responses import StreamingResponse
     
     try:
-        # check if conversation_id null or not if null create new conversation id
+        # Ensure we have a conversation_id for memory continuity  
         if not request.conversation_id:
             import uuid
             request.conversation_id = str(uuid.uuid4())
+            logger.info(f"Created new conversation ID for streaming: {request.conversation_id}")
+        else:
+            logger.info(f"Using existing conversation ID for streaming: {request.conversation_id}")
         
         # Convert to enhanced request format
         enhanced_request = ChatbotRequest(
@@ -306,6 +311,15 @@ async def streaming_demo():
                 background: #007bff;
                 transition: width 0.3s ease;
             }
+            .status-message {
+                background: #e8f4fd;
+                border: 1px solid #bee5eb;
+                color: #0c5460;
+                padding: 10px;
+                border-radius: 5px;
+                margin-bottom: 10px;
+                font-size: 0.9em;
+            }
             .metadata {
                 font-size: 0.8em;
                 color: #666;
@@ -330,7 +344,43 @@ async def streaming_demo():
             const sendButton = document.getElementById('sendButton');
             
             let currentBotMessage = null;
-            let currentConversationId = null;
+            
+            // Get conversation ID from localStorage or create new one
+            let currentConversationId = localStorage.getItem('conversationId');
+            if (!currentConversationId) {
+                currentConversationId = 'chat_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+                localStorage.setItem('conversationId', currentConversationId);
+                console.log('Created new conversation ID:', currentConversationId);
+            } else {
+                console.log('Using existing conversation ID:', currentConversationId);
+            }
+            
+            // Add conversation info to page
+            messageArea.innerHTML = `<div class="message status-message">🔗 Conversation ID: ${currentConversationId}<br/>💡 Your conversation history will be remembered across page reloads</div>`;
+            
+            // Add button to clear conversation
+            const clearButton = document.createElement('button');
+            clearButton.textContent = 'Clear Conversation';
+            clearButton.style.marginLeft = '10px';
+            clearButton.style.padding = '5px 10px';
+            clearButton.style.fontSize = '14px';
+            clearButton.onclick = function() {
+                if (confirm('Are you sure you want to clear the conversation history?')) {
+                    localStorage.removeItem('conversationId');
+                    location.reload();
+                }
+            };
+            sendButton.parentNode.appendChild(clearButton);
+            
+            // Add Enter key support
+            messageInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter' && !sendButton.disabled) {
+                    sendMessage();
+                }
+            });
+            
+            // Focus input on page load
+            messageInput.focus();
 
             function addMessage(content, type = 'user') {
                 const messageDiv = document.createElement('div');
@@ -415,9 +465,11 @@ async def streaming_demo():
                                             break;
                                         
                                         case 'complete':
-                                            if (data.conversation_id) {
-                                                    currentConversationId = data.conversation_id;
-                                                }
+                                            if (data.conversation_id && data.conversation_id !== currentConversationId) {
+                                                currentConversationId = data.conversation_id;
+                                                localStorage.setItem('conversationId', currentConversationId);
+                                                console.log('Updated conversation ID:', currentConversationId);
+                                            }
                                             const metadata = `
                                                 <div class="metadata">
                                                     ⏱️ ${data.response_time.toFixed(2)}s | 
