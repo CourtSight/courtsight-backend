@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Streaming Chatbot Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .chat-container {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .message-area {
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 20px;
+            background: #fafafa;
+            border-radius: 5px;
+        }
+        .message {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .user-message {
+            background: #007bff;
+            color: white;
+            text-align: right;
+        }
+        .bot-message {
+            background: #e9ecef;
+            color: #333;
+        }
+        .status-message {
+            background: #fff3cd;
+            color: #856404;
+            font-style: italic;
+            font-size: 0.9em;
+        }
+        .input-area {
+            display: flex;
+            gap: 10px;
+        }
+        #messageInput {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        #sendButton {
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        #sendButton:hover {
+            background: #0056b3;
+        }
+        #sendButton:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: #e9ecef;
+            border-radius: 2px;
+            margin: 5px 0;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: #007bff;
+            transition: width 0.3s ease;
+        }
+        .metadata {
+            font-size: 0.8em;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <h1>Supreme Court Legal Assistant - Streaming Demo</h1>
+        <div id="messageArea" class="message-area"></div>
+        <div class="input-area">
+            <input type="text" id="messageInput" placeholder="Ask a legal question..." />
+            <button id="sendButton" onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script>
+        const messageArea = document.getElementById('messageArea');
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        
+        let currentBotMessage = null;
+        let currentConversationId = null;
+
+        function addMessage(content, type = 'user') {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}-message`;
+            messageDiv.innerHTML = content;
+            messageArea.appendChild(messageDiv);
+            messageArea.scrollTop = messageArea.scrollHeight;
+            return messageDiv;
+        }
+
+        function updateBotMessage(content) {
+            if (currentBotMessage) {
+                currentBotMessage.innerHTML = content;
+            } else {
+                currentBotMessage = addMessage(content, 'bot');
+            }
+            messageArea.scrollTop = messageArea.scrollHeight;
+        }
+
+        function addStatusMessage(content) {
+            const statusDiv = addMessage(content, 'status');
+            // Remove status messages after 3 seconds
+            setTimeout(() => {
+                if (statusDiv.parentNode) {
+                    statusDiv.parentNode.removeChild(statusDiv);
+                }
+            }, 3000);
+        }
+
+        function addProgressBar() {
+            const progressDiv = document.createElement('div');
+            progressDiv.className = 'progress-bar';
+            progressDiv.innerHTML = '<div class="progress-fill" style="width: 0%"></div>';
+            messageArea.appendChild(progressDiv);
+            messageArea.scrollTop = messageArea.scrollHeight;
+            return progressDiv;
+        }
+
+        async function sendMessage() {
+            const message = messageInput.value.trim();
+            if (!message) return;
+
+            // Disable input
+            sendButton.disabled = true;
+            messageInput.disabled = true;
+
+            // Add user message
+            addMessage(message, 'user');
+
+            // Clear input
+            messageInput.value = '';
+
+            // Reset current bot message
+            currentBotMessage = null;
+
+            try {
+                const response = await fetch('/api/v1/chat/stream', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        conversation_id: currentConversationId
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let progressBar = null;
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n');
+
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const data = JSON.parse(line.substring(6));
+                                
+                                switch (data.type) {
+                                    case 'status':
+                                        addStatusMessage(`🔄 ${data.message}`);
+                                        if (data.conversation_id) {
+                                            currentConversationId = data.conversation_id;
+                                        }
+                                        break;
+                                    
+                                    case 'workflow_step':
+                                        addStatusMessage(`⚙️ ${data.step}`);
+                                        if (!progressBar) {
+                                            progressBar = addProgressBar();
+                                        }
+                                        const fill = progressBar.querySelector('.progress-fill');
+                                        fill.style.width = `${data.progress * 100}%`;
+                                        break;
+                                    
+                                    case 'partial_response':
+                                        updateBotMessage(data.content);
+                                        break;
+                                    
+                                    case 'final_response':
+                                        updateBotMessage(data.content);
+                                        if (progressBar) {
+                                            progressBar.remove();
+                                        }
+                                        break;
+                                    
+                                    case 'complete':
+                                        const metadata = `
+                                            <div class="metadata">
+                                                ⏱️ ${data.response_time.toFixed(2)}s | 
+                                                🔧 ${data.tools_used.length} tools | 
+                                                ${data.workflow_used ? '🔀 Workflow' : '🤖 Agent'}
+                                            </div>
+                                        `;
+                                        if (currentBotMessage) {
+                                            currentBotMessage.innerHTML += metadata;
+                                        }
+                                        break;
+                                    
+                                    case 'error':
+                                        updateBotMessage(`❌ Error: ${data.message}`);
+                                        break;
+                                }
+                            } catch (e) {
+                                console.error('Error parsing SSE data:', e);
+                            }
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                addMessage(`❌ Connection error: ${error.message}`, 'bot');
+            } finally {
+                // Re-enable input
+                sendButton.disabled = false;
+                messageInput.disabled = false;
+                messageInput.focus();
+            }
+        }
+
+        // Allow Enter key to send message
+        messageInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !sendButton.disabled) {
+                sendMessage();
+            }
+        });
+
+        // Focus input on load
+        messageInput.focus();
+    </script>
+</body>
+</html>

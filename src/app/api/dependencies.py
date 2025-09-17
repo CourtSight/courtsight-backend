@@ -3,6 +3,8 @@ from typing import Annotated, Any, cast
 from fastapi import Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.app.services.chatbot.chatbot_service import ChatbotService, get_chatbot_service
+
 from ..core.config import settings
 from ..core.db.database import async_get_db
 from ..core.exceptions.http_exceptions import ForbiddenException, RateLimitException, UnauthorizedException
@@ -104,3 +106,11 @@ async def rate_limiter_dependency(
     is_limited = await rate_limiter.is_rate_limited(db=db, user_id=user_id, path=path, limit=limit, period=period)
     if is_limited:
         raise RateLimitException("Rate limit exceeded.")
+
+
+
+async def get_chatbot_dependencies(
+    db: AsyncSession = Depends(async_get_db),
+    user_id: int = 1,  # Default test user
+) -> ChatbotService:
+    return ChatbotService(db_session=db, user_id=user_id)
