@@ -1,6 +1,6 @@
 <h1 align="center">🏛️ CourtSight</h1>
 <p align="center" markdown=1>
-  <i>Platform Kecerdasan Hukum Berbasis AI untuk Putusan Mahkamah Agung</i>
+  <i>AI-Powered Legal Intelligence Platform for Supreme Court Decisions</i>
 </p>
 
 <p align="center">
@@ -25,63 +25,77 @@
   <a href="https://docs.docker.com/compose/">
       <img src="https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=fff&style=for-the-badge" alt="Docker">
   </a>
-  <a href="https://supabase.com">
-      <img src="https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase">
+  <a href="https://ai.google.dev">
+      <img src="https://img.shields.io/badge/Google%20AI-4285F4?style=for-the-badge&logo=google&logoColor=white" alt="Google AI">
+  </a>
+  <a href="https://python.langchain.com">
+      <img src="https://img.shields.io/badge/LangChain-1C3C3C?style=for-the-badge&logo=langchain&logoColor=white" alt="LangChain">
+  </a>
+  <a href="https://nginx.org">
+      <img src="https://img.shields.io/badge/Nginx-009639?style=for-the-badge&logo=nginx&logoColor=white" alt="Nginx">
   </a>
 </p>
 
 ---
 
-## 🎯 Tentang CourtSight
+## 🎯 About CourtSight
 
-**CourtSight** adalah platform kecerdasan hukum berbasis AI yang revolusioner, dirancang untuk mendemokratisasi akses terhadap informasi hukum di Asia Tenggara. Platform ini mengubah dokumen putusan Mahkamah Agung yang kompleks menjadi wawasan yang mudah dicari dan dipahami, menjadikan keadilan lebih transparan dan inklusif.
+**CourtSight** is a revolutionary AI-powered legal intelligence platform designed to democratize access to legal information in Southeast Asia. The platform transforms complex Supreme Court decision documents into searchable and understandable insights, making justice more transparent and inclusive.
 
-### 🌟 Visi & Misi
+### 🌟 Vision & Mission
 
-**Visi:** Mendemokratisasi akses informasi hukum dengan teknologi AI untuk mewujudkan keadilan yang lebih transparan dan inklusif.
+**Vision:** Democratize access to legal information through AI technology to create more transparent and inclusive justice.
 
-**Misi:** Mengembangkan platform AI yang memungkinkan pencarian semantik, analisis cerdas, dan asisten suara untuk putusan Mahkamah Agung, membantu profesional hukum, peneliti, dan masyarakat umum dalam memahami kompleksitas hukum.
+**Mission:** Develop an AI platform that enables semantic search, intelligent analysis, and voice assistance for Supreme Court decisions, helping legal professionals, researchers, and the general public understand legal complexities.
 
-### 🚀 Fitur Utama
+### 🚀 Key Features
 
-1. **🔍 Mesin Pencari Berbasis AI**
-   - Pencarian semantik putusan Mahkamah Agung menggunakan bahasa alami
-   - Vector database dengan pgvector untuk similarity search
-   - Analisis dan ringkasan otomatis menggunakan LLM
-   - Validasi sitasi dan referensi hukum
+1. **🔍 AI-Powered Search Engine**
+   - Semantic search of Supreme Court decisions using natural language
+   - Vector database with pgvector for similarity search
+   - Automatic analysis and summarization using LLMs
+   - **Multi-strategy retrieval** (vector, hybrid, parent-child)
+   - **RAGAS evaluation framework** for search quality assessment
+   - Legal citation validation and references
 
 <img width="4000" height="1847" alt="AIBasedSearchEngineforSupremeCourt" src="https://github.com/user-attachments/assets/2b953982-9524-4ec2-a472-3c667caa4c79" />
 
 
-2. **🤖 Chatbot AI untuk Hukum** *(Coming Soon)*
-   - Interaksi percakapan untuk Q&A hukum
-   - Analisis kontekstual berbasis RAG (Retrieval-Augmented Generation)
-   - Integrasi dengan database putusan pengadilan
+2. **🤖 AI Legal Chatbot** *(Active Development)*
+   - **Conversational AI** with advanced context awareness
+   - **LangGraph-powered workflow orchestration** for complex legal reasoning
+   - **Streaming responses** for real-time interaction
+   - **Enhanced memory system** with conversation isolation
+   - **RAG-enhanced responses** with legal document context
+   - Integration with Supreme Court decision database
 
 <img width="4000" height="2483" alt="AIChatbotforSupremeCourtLaw" src="https://github.com/user-attachments/assets/7bb4029c-5b9c-4bdb-b9c9-1866ef9d3330" />
 
 
 
-3. **🎙️ Asisten Suara AI** *(Coming Soon)*
-   - Transkripsi real-time untuk notulensi pengacara
-   - Analisis percakapan dan ekstraksi poin-poin kunci
-   - Integrasi dengan basis data hukum
+3. **🎙️ AI Voice Assistant** *(Future Development)*
+   - Real-time transcription for lawyer note-taking
+   - Conversation analysis and key point extraction
+   - Voice commands for legal document search
+   - Integration with legal knowledge base
 <img width="4000" height="1954" alt="AIVoiceAssistantforLawyersNote-Taking" src="https://github.com/user-attachments/assets/f804b48b-6b8f-4585-bd40-1ac1536ad7f8" />
 
 ---
 
-## 🏗️ Arsitektur Sistem
+## 🏗️ System Architecture
 
 ### 📊 Tech Stack Overview
 
-| Kategori            | Teknologi                       | Tujuan                                           |
-| ------------------- | ------------------------------- | ------------------------------------------------ |
-| **Backend API**     | FastAPI + SQLAlchemy 2.0        | RESTful API dengan async support                 |
-| **Database**        | PostgreSQL + pgvector           | Relational data + Vector similarity search       |
-| **AI/ML Services**  | Embedding Service + LLM Service | Text vectorization + Natural language processing |
-| **Search Engine**   | Supabase Vector Functions       | Optimized similarity search dengan HNSW indexing |
-| **Task Processing** | Document Processor + Scheduler  | Automated document ingestion pipeline            |
-| **Authentication**  | JWT + Optional Auth             | Secure API access dengan public endpoints        |
+| Category            | Technology                      | Purpose                                         |
+| ------------------- | ------------------------------- | ----------------------------------------------- |
+| **Backend API**     | FastAPI + SQLAlchemy 2.0       | RESTful API with async support                  |
+| **Database**        | PostgreSQL + pgvector          | Relational data + Vector similarity search      |
+| **AI/ML Services**  | Google AI + LangChain          | Text vectorization + Natural language processing |
+| **Search Engine**   | Multi-strategy RAG             | Optimized similarity search with HNSW indexing  |
+| **Task Processing** | Document Processor + Scheduler | Automated document ingestion pipeline           |
+| **Authentication**  | JWT + FastCRUD Admin           | Secure API access with admin panel             |
+| **Caching**         | Redis + Client-side Cache      | High-performance caching layer                  |
+| **Production**      | Nginx + Docker + SSL           | Production-ready deployment with security       |
 
 ### 🏗️ Layered Architecture Visualization
 
@@ -256,86 +270,87 @@ graph TB
 - **Error Tracking**: Centralized logging and error reporting
 - **Usage Analytics**: Search patterns and user behavior tracking
 
-## 📋 Daftar Isi
+## 📋 Table of Contents
 
-1. [🎯 Tentang CourtSight](#-tentang-courtsight)
-2. [🏗️ Arsitektur Sistem](#️-arsitektur-sistem)
-3. [📋 Daftar Isi](#-daftar-isi)
+1. [🎯 About CourtSight](#-about-courtsight)
+2. [🏗️ System Architecture](#️-system-architecture)
+3. [📋 Table of Contents](#-table-of-contents)
 4. [✅ Prerequisites](#-prerequisites)
-6. [🚀 Instalasi & Setup](#-instalasi--setup)
-   - [6.1 Clone Repository](#51-clone-repository)
-   - [6.2 Environment Variables](#52-environment-variables)
-   - [6.3 Database Setup](#53-database-setup)
-   - [6.4 Docker Setup](#54-docker-setup)
-   - [6.5 Database Migration](#55-database-migration)
-   - [6.6 Verifikasi Installation](#56-verifikasi-installation)
-6. [📚 Dokumentasi API](#-dokumentasi-api)
-7. [🔧 Konfigurasi Development](#-konfigurasi-development)
+5. [🚀 Installation & Setup](#-installation--setup)
+   - [5.1 Clone Repository](#51-clone-repository)
+   - [5.2 Environment Variables](#52-environment-variables)
+   - [5.3 Database Setup](#53-database-setup)
+   - [5.4 Docker Setup](#54-docker-setup)
+   - [5.5 Database Migration](#55-database-migration)
+   - [5.6 Installation Verification](#56-installation-verification)
+6. [📚 API Documentation](#-api-documentation)
+7. [🔧 Development Configuration](#-development-configuration)
 8. [📊 Monitoring & Statistics](#-monitoring--statistics)
 9. [🔧 Troubleshooting](#-troubleshooting)
-10. [🤝 Contributing](#-contributing)
-11. [📄 License](#-license)
+10. [🚀 Production Deployment](#-production-deployment)
+11. [🤝 Contributing](#-contributing)
+12. [📄 License](#-license)
 
 ---
 
 ## ✅ Prerequisites
 
-Pastikan sistem Anda memiliki software berikut sebelum memulai instalasi:
+Ensure your system has the following software before starting installation:
 
 ### System Requirements
 
-- **Operating System:** Linux, macOS, atau Windows dengan WSL2
-- **Python:** Version 3.11+ 
+- **Operating System:** Linux, macOS, or Windows with WSL2
+- **Python:** Version 3.11+
 - **Docker:** Version 20.10+
 - **Docker Compose:** Version 2.0+
 - **Git:** Version 2.30+
 - **Memory:** Minimum 4GB RAM (8GB+ recommended)
 - **Storage:** Minimum 10GB free space
 
-### Verifikasi Prerequisites
+### Prerequisites Verification
 
 ```bash
-# Cek versi Python
+# Check Python version
 python --version  # Should be 3.11+
 
-# Cek versi Docker
+# Check Docker version
 docker --version  # Should be 20.10+
 
-# Cek versi Docker Compose
+# Check Docker Compose version
 docker compose version  # Should be 2.0+
 
-# Cek versi Git
+# Check Git version
 git --version  # Should be 2.30+
 ```
 
 ---
 
-## 🚀 Instalasi & Setup
+## 🚀 Installation & Setup
 
-### 6.1 Clone Repository
+### 5.1 Clone Repository
 
 ```bash
-# Clone repository CourtSight
-git clone https://github.com/yourusername/courtsight.git
-cd courtsight
+# Clone CourtSight repository
+git clone https://github.com/CourtSight/courtsight-backend
+cd courtsight-backend
 
-# Checkout ke branch main (jika belum)
+# Checkout to main branch (if not already)
 git checkout main
 ```
 
-### 6.2 Environment Variables
+### 5.2 Environment Variables
 
-#### Langkah 1: Buat File Environment
+#### Step 1: Create Environment File
 
 ```bash
-# Masuk ke direktori src
+# Navigate to src directory
 cd src
 
-# Buat file .env dari template
+# Create .env file from template
 cp .env.example .env
 
-# Edit file .env dengan editor favorit
-nano .env  # atau vim .env atau code .env
+# Edit .env file with your favorite editor
+nano .env  # or vim .env or code .env
 ```
 
 #### Langkah 2: Konfigurasi Environment Variables
@@ -2565,5 +2580,71 @@ services:
 volumes:
   postgres-data:
   redis-data:
-  #pgadmin-data:
+  #pgladmin-data:
 ```
+
+---
+
+## 🚀 Production Deployment
+
+CourtSight is production-ready with comprehensive deployment configurations including Nginx reverse proxy, SSL/TLS security, and Docker orchestration.
+
+### 🏭 Production Features
+
+#### **Enterprise-Grade Infrastructure**
+- **Nginx Reverse Proxy** with load balancing and caching
+- **SSL/TLS Security** with Let's Encrypt auto-renewal
+- **Docker Orchestration** with health checks and auto-restart
+- **Redis Caching** for optimal performance
+- **Background Workers** for document processing
+
+#### **Security & Performance**
+- **Rate Limiting** per endpoint and user
+- **Security Headers** (HSTS, CSP, X-Frame-Options)
+- **CORS Configuration** for frontend integration
+- **JWT Authentication** with refresh tokens
+- **Database Connection Pooling** with async SQLAlchemy
+
+#### **Monitoring & Observability**
+- **Health Check Endpoints** for all services
+- **Structured Logging** with JSON format
+- **Performance Metrics** collection
+- **Error Tracking** and alerting
+- **Nginx Access Logs** with analytics
+
+### 🚢 Quick Production Deployment
+
+```bash
+# 1. Configure production environment
+cp .env.production.example .env.production
+# Edit .env.production with your production values
+
+# 2. Deploy Nginx configuration
+sudo ./nginx/scripts/deploy.sh
+
+# 3. Setup SSL certificates
+sudo ./nginx/scripts/setup-ssl.sh
+
+# 4. Start production services
+docker-compose -f docker-compose.prod.yml up -d
+
+# 5. Verify deployment
+curl -I https://api.your-domain.com/health
+```
+
+### 📋 Production Checklist
+
+- [ ] Domain DNS configured
+- [ ] SSL certificates obtained
+- [ ] Environment variables secured
+- [ ] Database backups configured
+- [ ] Monitoring setup
+- [ ] Security headers verified
+- [ ] Performance testing completed
+
+### 📖 Detailed Production Guide
+
+For comprehensive production deployment instructions, see: 
+**[Production Deployment Guide](docs/deployment/PRODUCTION_DEPLOYMENT.md)**
+
+---

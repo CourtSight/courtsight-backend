@@ -15,7 +15,7 @@ from ...models.user import User
 from ...schemas.search import HealthResponse, SearchRequest, SearchResponse
 from ...services.rag_service import RAGService, create_rag_service
 
-router = APIRouter(prefix="/api/v1/search", tags=["search"])
+router = APIRouter(prefix="/api/v1/search", tags=["search"], redirect_slashes=False)
 
 
 @router.post("/", response_model=SearchResponse)

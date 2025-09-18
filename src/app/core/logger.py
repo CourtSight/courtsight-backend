@@ -2,8 +2,11 @@ import logging
 import os
 from logging.handlers import RotatingFileHandler
 
-LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "logs")
-os.makedirs(LOG_DIR, exist_ok=True)
+# Use /app/logs for Docker container or fallback to current directory
+LOG_DIR = os.getenv("LOG_DIR", "/app/logs")
+if not os.path.exists(LOG_DIR):
+    # Fallback to app-relative logs directory if /app/logs doesn't exist
+    LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "logs")
 
 LOG_FILE_PATH = os.path.join(LOG_DIR, "app.log")
 LOGGING_LEVEL = logging.INFO
@@ -15,10 +18,17 @@ def setup_logging():
 
     # Prevent adding multiple handlers in reload scenarios
     if not logger.handlers:
-        file_handler = RotatingFileHandler(LOG_FILE_PATH, maxBytes=10485760, backupCount=5)
-        file_handler.setLevel(LOGGING_LEVEL)
-        file_handler.setFormatter(logging.Formatter(LOGGING_FORMAT))
-        logger.addHandler(file_handler)
+        # Create logs directory if it doesn't exist
+        try:
+            os.makedirs(LOG_DIR, exist_ok=True)
+            file_handler = RotatingFileHandler(LOG_FILE_PATH, maxBytes=10485760, backupCount=5)
+            file_handler.setLevel(LOGGING_LEVEL)
+            file_handler.setFormatter(logging.Formatter(LOGGING_FORMAT))
+            logger.addHandler(file_handler)
+        except (PermissionError, OSError) as e:
+            # If file logging fails, just use console logging
+            print(f"Warning: Could not set up file logging: {e}")
+            print(f"Continuing with console logging only")
 
         stream_handler = logging.StreamHandler()
         stream_handler.setLevel(LOGGING_LEVEL)

@@ -216,6 +216,7 @@ Thought: {agent_scratchpad}
                 verbose=False,
                 handle_parsing_errors=True,
                 max_iterations=15,
+                max_execution_time=120,
                 early_stopping_method="generate"  # Stop when final answer is generated
             )
             

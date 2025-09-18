@@ -238,29 +238,20 @@ class CourtRAGChains:
 
         # Retrieval function that handles async properly
         def retrieve_documents(query_dict: Dict[str, str]) -> List[Document]:
-            """Synchronous wrapper for async retrieval."""
+            """Synchronous wrapper for retrieval."""
             try:
                 query = query_dict.get("query", "")
 
-                # If we have a retrieval service, use it
+                # If we have a retrieval service, use it directly (it's synchronous)
                 if self.retrieval_service:
-                    import asyncio
                     try:
-                        loop = asyncio.get_event_loop()
-                        if loop.is_running():
-                            # We're in an async context, can't use run_until_complete
-                            # Fall back to vector store retrieval
-                            return self._fallback_retrieval(query)
-                        else:
-                            return loop.run_until_complete(
-                                self.retrieval_service.retrieve(
-                                    query=query,
-                                    strategy=self.retrieval_strategy,
-                                    top_k=5
-                                )
-                            )
-                    except RuntimeError:
-                        # Loop is already running, use fallback
+                        return self.retrieval_service.retrieve(
+                            query=query,
+                            strategy=self.retrieval_strategy,
+                            top_k=5
+                        )
+                    except Exception as e:
+                        logger.warning(f"Retrieval service failed, using fallback: {e}")
                         return self._fallback_retrieval(query)
                 else:
                     # Use fallback retrieval

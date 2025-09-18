@@ -6,8 +6,8 @@
 set -e
 
 # Configuration
-DOMAINS=("courtsight.id" "www.courtsight.id" "api.courtsight.id")
-EMAIL="admin@courtsight.id"
+DOMAINS=("courtsight.my.id" "www.courtsight.my.id" "api.courtsight.my.id")
+EMAIL="admin@courtsight.my.id"
 STAGING=0  # Set to 1 for testing with staging environment
 
 # Colors for output
